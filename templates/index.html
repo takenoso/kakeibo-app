@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家計簿</title>
+<style>
+:root {
+  --bg: #08090d; --surface: #12141c; --surface2: #1a1e2a; --surface3: #222738;
+  --border: #2a2f42; --border-light: #353b52;
+  --text: #e8eaf0; --text-dim: #7b819a; --text-muted: #555b74;
+  --accent: #5b7fff; --accent-dim: #4563d4; --accent-glow: rgba(91,127,255,.15);
+  --green: #34d399; --green-dim: #059669; --green-glow: rgba(52,211,153,.12);
+  --red: #f87171; --red-dim: #dc2626; --red-glow: rgba(248,113,113,.12);
+  --orange: #fbbf24; --cyan: #22d3ee; --purple: #a78bfa; --pink: #f472b6;
+  --radius: 14px; --radius-sm: 10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.app{max-width:880px;margin:0 auto;padding:12px 16px 80px}
+
+/* ─── Nav ─── */
+nav{display:flex;gap:2px;background:var(--surface);padding:4px;border-radius:var(--radius);margin-bottom:20px;border:1px solid var(--border);backdrop-filter:blur(8px)}
+nav button{flex:1;padding:10px 6px;border:none;background:transparent;color:var(--text-dim);font-size:12px;font-weight:600;border-radius:var(--radius-sm);cursor:pointer;transition:all .25s;white-space:nowrap;letter-spacing:.02em}
+nav button.active{background:linear-gradient(135deg,var(--accent),var(--accent-dim));color:#fff;box-shadow:0 2px 12px rgba(91,127,255,.35)}
+nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
+
+.section{display:none}.section.active{display:block}
+
+/* ─── Cards ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;transition:border-color .2s}
+.card:hover{border-color:var(--border-light)}
+.card h2{font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em}
+.big-number{font-size:36px;font-weight:800;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+.big-number.green{color:var(--green);text-shadow:0 0 30px rgba(52,211,153,.2)}
+.big-number.red{color:var(--red);text-shadow:0 0 30px rgba(248,113,113,.2)}
+.big-number.accent{color:var(--accent);text-shadow:0 0 30px rgba(91,127,255,.2)}
+
+/* Hero card */
+.hero-card{background:linear-gradient(135deg,var(--surface) 0%,#151a2a 100%);border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin-bottom:16px;position:relative;overflow:hidden}
+.hero-card::before{content:'';position:absolute;top:-50%;right:-30%;width:300px;height:300px;background:radial-gradient(circle,rgba(52,211,153,.06) 0%,transparent 70%);pointer-events:none}
+.hero-label{font-size:13px;color:var(--text-dim);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.hero-sub{font-size:12px;color:var(--text-muted);margin-top:6px}
+
+/* Grid */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.stat-card h3{font-size:11px;color:var(--text-dim);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.stat-card .value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.progress-bar{background:var(--surface2);border-radius:8px;height:6px;overflow:hidden;margin-top:14px}
+.progress-fill{height:100%;border-radius:8px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* ─── Forms ─── */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.form-row-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+/* ─── Buttons ─── */
+.btn{padding:10px 20px;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-dim));color:#fff;width:100%;box-shadow:0 2px 12px rgba(91,127,255,.25)}
+.btn-primary:hover{box-shadow:0 4px 20px rgba(91,127,255,.4);transform:translateY(-1px)}
+.btn-danger{background:transparent;color:var(--red);padding:6px 12px;font-size:12px;border-radius:6px}.btn-danger:hover{background:var(--red-glow)}
+.btn-small{padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text);border-radius:8px;border:1px solid var(--border)}.btn-small:hover{background:var(--surface3);border-color:var(--border-light)}
+.btn-edit{background:transparent;color:var(--accent);padding:6px 12px;font-size:12px;border-radius:6px}.btn-edit:hover{background:var(--accent-glow)}
+.btn-ghost{background:var(--surface2);color:var(--text-dim);padding:8px 16px;font-size:13px;border:1px solid var(--border);border-radius:8px}.btn-ghost:hover{color:var(--text);border-color:var(--border-light)}
+
+/* ─── Type Toggle ─── */
+.type-toggle{display:flex;gap:2px;background:var(--surface2);padding:3px;border-radius:var(--radius-sm);margin-bottom:14px;border:1px solid var(--border)}
+.type-toggle button{flex:1;padding:8px;border:none;background:transparent;color:var(--text-dim);font-size:14px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s}
+.type-toggle button.sel-expense{background:linear-gradient(135deg,var(--red),var(--red-dim));color:#fff;box-shadow:0 2px 8px var(--red-glow)}
+.type-toggle button.sel-income{background:linear-gradient(135deg,var(--green),var(--green-dim));color:#fff;box-shadow:0 2px 8px var(--green-glow)}
+.type-toggle button.sel-transfer{background:linear-gradient(135deg,var(--cyan),#0891b2);color:#fff;box-shadow:0 2px 8px rgba(34,211,238,.2)}
+.type-toggle button.sel-cc_detail{background:linear-gradient(135deg,var(--orange),#d97706);color:#fff;box-shadow:0 2px 8px rgba(251,191,36,.2)}
+
+/* ─── List Items ─── */
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);gap:8px}
+.list-item:last-child{border-bottom:none}
+.list-item .info{flex:1;min-width:0}.list-item .info .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .info .sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.list-item .amount{font-weight:700;font-size:15px;white-space:nowrap;margin-left:8px;font-variant-numeric:tabular-nums}
+.list-item .amount.expense{color:var(--red)}.list-item .amount.income{color:var(--green)}.list-item .amount.transfer{color:var(--cyan)}
+.list-item .actions{display:flex;gap:4px;flex-shrink:0}
+
+.acc-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;letter-spacing:.02em}
+.acc-badge.c-asset{background:var(--green-glow);color:var(--green);border:1px solid rgba(52,211,153,.2)}
+.acc-badge.c-liability{background:var(--red-glow);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+.acc-badge.l-asset{background:rgba(91,127,255,.1);color:var(--accent);border:1px solid rgba(91,127,255,.2)}
+.acc-badge.l-liability{background:rgba(251,191,36,.1);color:var(--orange);border:1px solid rgba(251,191,36,.2)}
+
+/* ─── Tags ─── */
+.tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag-chip{padding:4px 12px;border-radius:20px;font-size:12px;background:var(--surface2);color:var(--text-dim);cursor:pointer;border:1px solid var(--border);transition:all .2s;user-select:none;font-weight:500}
+.tag-chip.selected{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border-color:var(--purple);box-shadow:0 2px 8px rgba(167,139,250,.25)}
+.tag-chip:hover{border-color:var(--purple)}
+.tag-add-row{display:flex;gap:6px;align-items:center}
+.tag-add-row input{flex:1;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+
+/* ─── Schedule/Memo hierarchy ─── */
+.tx-hierarchy{font-size:12px;color:var(--text-dim);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tx-hierarchy .h-tag{color:var(--purple)}
+.tx-hierarchy .h-schedule{color:var(--cyan)}
+.tx-hierarchy .h-memo{color:var(--text-muted)}
+.tx-hierarchy .h-sep{color:var(--text-muted);font-size:10px}
+
+/* ─── Cash Flow ─── */
+.cf-month{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.cf-month-header{padding:16px 22px;font-weight:700;font-size:15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface2)}
+.cf-event{display:flex;align-items:center;padding:11px 22px;border-bottom:1px solid var(--border);font-size:14px;transition:background .15s}
+.cf-event:hover{background:var(--surface2)}
+.cf-event:last-child{border-bottom:none}
+.cf-event .cf-date{width:50px;color:var(--text-dim);font-size:13px;flex-shrink:0;font-weight:500}
+.cf-event .cf-name{flex:1;font-weight:500}
+.cf-event .cf-acc{font-size:11px;color:var(--text-muted);margin-left:8px}
+.cf-event .cf-amt{width:100px;text-align:right;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums}
+.cf-event .cf-running{width:130px;text-align:right;color:var(--text-dim);font-size:13px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.cf-footer{padding:14px 22px;display:flex;justify-content:space-between;font-weight:700;background:linear-gradient(135deg,var(--surface2),var(--surface3));font-size:15px}
+.cf-credit{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px}
+.cf-summary{background:linear-gradient(135deg,var(--surface) 0%,#151a2a 100%);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px}
+
+/* ─── Financial Statements ─── */
+.fs{font-size:14px}
+.fs-header{font-size:18px;font-weight:800;text-align:center;padding:14px 0;border-bottom:2px solid var(--border-light);letter-spacing:.02em}
+.fs-section-title{font-weight:700;padding:12px 0 6px;color:var(--accent);border-bottom:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.fs-row{display:flex;justify-content:space-between;padding:7px 0 7px 16px;font-size:14px}
+.fs-row.total{font-weight:700;border-top:1px solid var(--border);padding:10px 0;margin-top:4px}
+.fs-row.grand-total{font-weight:800;border-top:2px solid var(--border-light);padding:12px 0;margin-top:8px;font-size:17px}
+.fs-row .val{font-variant-numeric:tabular-nums}
+
+.bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.bs-col{padding:18px}.bs-col:first-child{border-right:1px solid var(--border)}
+.bs-col-header{font-size:12px;font-weight:700;color:var(--accent);padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em}
+.bs-row{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+.bs-subtotal{display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border);margin-top:6px;font-weight:600;font-size:13px;color:var(--text-dim)}
+.bs-total{display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid var(--border-light);margin-top:10px;font-weight:800;font-size:15px}
+
+/* Charts */
+.chart-container{display:flex;gap:8px;align-items:flex-end;height:200px;padding:16px 0}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+.chart-bar{width:100%;max-width:40px;border-radius:8px 8px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1)}
+.chart-label{font-size:10px;color:var(--text-dim);margin-top:6px;text-align:center}
+.chart-value{font-size:10px;color:var(--text);margin-bottom:4px;font-weight:600}
+
+.filter-row{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.filter-row select,.filter-row input{padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+
+/* Chips */
+.chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip-item{display:flex;align-items:center;gap:4px;padding:4px 6px 4px 12px;background:var(--surface2);border-radius:20px;font-size:12px;border:1px solid var(--border)}
+.chip-item .chip-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+
+.liability-fields{margin-top:8px;padding:14px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+
+/* Edit form inline */
+.edit-form{background:var(--surface2);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:16px;margin:8px 0;animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Divider */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* Section header */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-header h2{margin-bottom:0}
+
+/* ─── Calendar ─── */
+.cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.cal-nav .cal-label{font-size:20px;font-weight:800;letter-spacing:.02em}
+.cal-nav button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}
+.cal-nav button:hover{background:var(--surface3);border-color:var(--border-light)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dow{text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 0;text-transform:uppercase}
+.cal-dow.sun{color:var(--red)}.cal-dow.sat{color:var(--accent)}
+.cal-cell{background:var(--surface);border:1px solid var(--border);border-radius:8px;min-height:90px;padding:6px;position:relative;transition:border-color .2s;overflow:hidden}
+.cal-cell:hover{border-color:var(--border-light)}
+.cal-cell.empty{background:transparent;border-color:transparent;min-height:0}
+.cal-cell.today{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.cal-cell.past{opacity:.6}
+.cal-cell.has-events{border-color:var(--border-light)}
+.cal-day-num{font-size:12px;font-weight:700;margin-bottom:4px;color:var(--text)}
+.cal-cell.today .cal-day-num{color:var(--accent)}
+.cal-cell.sun .cal-day-num{color:var(--red)}
+.cal-cell.sat .cal-day-num{color:var(--accent)}
+.cal-events{display:flex;flex-direction:column;gap:2px}
+.cal-evt{font-size:9px;line-height:1.3;padding:1px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-evt.expense{background:var(--red-glow);color:var(--red)}
+.cal-evt.income{background:var(--green-glow);color:var(--green)}
+.cal-evt.scheduled{opacity:.7;border:1px dashed}
+.cal-evt.cc-charge{opacity:.5;border:1px dotted;font-style:italic}
+.cal-balance{position:absolute;bottom:4px;right:6px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.cal-start-bal{text-align:center;margin-bottom:12px;font-size:14px;color:var(--text-dim)}
+.cal-start-bal span{color:var(--accent);font-weight:700}
+.cal-end-summary{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.cal-end-summary .label{font-size:13px;color:var(--text-dim);font-weight:600}
+.cal-end-summary .val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+
+@media(max-width:600px){
+  .cal-cell{min-height:70px;padding:4px}
+  .cal-evt{font-size:8px}
+  .cal-balance{font-size:9px}
+  .cal-day-num{font-size:11px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.form-row,.form-row-3,.form-row-4{grid-template-columns:1fr}
+  .big-number{font-size:28px}nav button{font-size:11px;padding:8px 4px}
+  .bs-grid{grid-template-columns:1fr}.bs-col:first-child{border-right:none;border-bottom:1px solid var(--border)}
+  .cf-event .cf-running{display:none}
+  .stat-card .value{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="main-nav">
+    <button class="active" data-section="dashboard">ダッシュボード</button>
+    <button data-section="record">記録</button>
+    <button data-section="calendar">カレンダー</button>
+    <button data-section="cashflow">キャッシュフロー</button>
+    <button data-section="ledger">帳簿</button>
+    <button data-section="settings">設定</button>
+  </nav>
+
+  <!-- ═══ Dashboard ═══ -->
+  <div id="dashboard" class="section active">
+    <div class="hero-card">
+      <div class="hero-label">あといくら使える</div>
+      <div class="big-number green" id="d-spendable" style="margin:8px 0 4px">--</div>
+      <div class="hero-sub">流動純資産 − 今後の固定費 + 今後の収入</div>
+      <div class="progress-bar"><div class="progress-fill" id="d-progress" style="width:0%;background:var(--green)"></div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:12px">
+      <div class="stat-card">
+        <h3>流動純資産</h3>
+        <div class="value" style="color:var(--accent)" id="d-current-net">--</div>
+      </div>
+      <div class="stat-card">
+        <h3>総純資産</h3>
+        <div class="value" style="color:var(--text)" id="d-networth">--</div>
+      </div>
+    </div>
+    <div class="grid-4" style="margin-bottom:12px">
+      <div class="stat-card"><h3>流動資産</h3><div class="value" style="color:var(--green);font-size:18px" id="d-c-assets">--</div></div>
+      <div class="stat-card"><h3>流動負債</h3><div class="value" style="color:var(--red);font-size:18px" id="d-c-liabilities">--</div></div>
+      <div class="stat-card"><h3>固定資産</h3><div class="value" style="color:var(--accent);font-size:18px" id="d-l-assets">--</div></div>
+      <div class="stat-card"><h3>固定負債</h3><div class="value" style="color:var(--orange);font-size:18px" id="d-l-liabilities">--</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="stat-card"><h3>今月の支出</h3><div class="value" style="color:var(--red)" id="d-expenses">--</div></div>
+      <div class="stat-card"><h3>今月の収入</h3><div class="value" style="color:var(--green)" id="d-income">--</div></div>
+    </div>
+    <div class="card">
+      <h2>口座残高一覧</h2>
+      <div id="d-account-list"></div>
+    </div>
+    <div class="card">
+      <div class="section-header"><h2>残高照合（実残高チェック）</h2>
+        <button class="btn btn-small" onclick="toggleReconcile()">開く/閉じる</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">実際の残高を入力して、アプリの記録との差額を確認できます。差額があれば調整仕訳を作れます。</p>
+      <div id="reconcile-body" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Record ═══ -->
+  <div id="record" class="section">
+    <div class="card">
+      <h2>仕訳を記録</h2>
+      <div class="type-toggle">
+        <button id="tb-expense" class="sel-expense" onclick="setTxType('expense')">支出</button>
+        <button id="tb-income" onclick="setTxType('income')">収入</button>
+        <button id="tb-transfer" onclick="setTxType('transfer')">振替</button>
+        <button id="tb-cc_detail" onclick="setTxType('cc_detail')">CC明細</button>
+      </div>
+      <div id="cc-detail-note" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--orange)">
+        CC明細: クレジットカードの中身を分類するための記録です。残高には影響しません。
+      </div>
+      <div id="form-normal">
+        <div class="form-row">
+          <div class="form-group"><label>日付</label><input type="date" id="rec-date"></div>
+          <div class="form-group"><label>金額</label><input type="number" id="rec-amount" placeholder="0" inputmode="numeric"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>勘定科目</label><select id="rec-category"></select></div>
+          <div class="form-group"><label id="rec-account-label">決済手段</label><select id="rec-account"></select></div>
+          <div class="form-group"><label>予定</label><input type="text" id="rec-schedule" placeholder="例: 四国旅行"></div>
+        </div>
+        <div class="form-group">
+          <label>タグ（タップで選択、複数可）</label>
+          <div class="tag-chips" id="rec-tag-chips"></div>
+          <div class="tag-add-row">
+            <input type="text" id="rec-new-tag" placeholder="新しいタグを入力">
+            <button class="btn btn-small" onclick="addInlineTag()">+</button>
+          </div>
+        </div>
+        <div class="form-group"><label>メモ</label><input type="text" id="rec-memo" placeholder="例: 交通費"></div>
+      </div>
+      <div id="form-transfer" style="display:none">
+        <div class="form-row-3">
+          <div class="form-group"><label>日付</label><input type="date" id="tr-date"></div>
+          <div class="form-group"><label>金額</label><input type="number" id="tr-amount" placeholder="0" inputmode="numeric"></div>
+          <div class="form-group"><label>メモ</label><input type="text" id="tr-memo" placeholder="例: ATM引出し"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>振替元（出金）</label><select id="tr-from"></select></div>
+          <div class="form-group"><label>振替先（入金/返済）</label><select id="tr-to"></select></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addTransaction()">記録する</button>
+    </div>
+    <div class="card">
+      <h2>最近の仕訳</h2>
+      <div id="recent-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Calendar ═══ -->
+  <div id="calendar" class="section">
+    <div id="cal-body"></div>
+  </div>
+
+  <!-- ═══ Cash Flow ═══ -->
+  <div id="cashflow" class="section">
+    <div id="cf-body"></div>
+  </div>
+
+  <!-- ═══ Ledger ═══ -->
+  <div id="ledger" class="section">
+    <div class="card"><div class="fs">
+      <div class="fs-header">損益計算書 (P/L)<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
+      <div id="pl-body"></div>
+    </div></div>
+    <div class="card"><div class="fs">
+      <div class="fs-header">貸借対照表 (B/S)</div>
+      <div id="bs-body" style="margin-top:12px"></div>
+    </div></div>
+    <div class="card">
+      <h2>月別カテゴリ内訳</h2>
+      <div class="filter-row"><select id="chart-month" onchange="renderChart()"></select></div>
+      <div class="chart-container" id="chart"></div>
+    </div>
+    <div class="card">
+      <h2>仕訳帳</h2>
+      <div class="filter-row">
+        <select id="filter-month" onchange="renderHistory()"><option value="">全期間</option></select>
+        <select id="filter-type" onchange="renderHistory()"><option value="">すべて</option><option value="expense">支出</option><option value="income">収入</option><option value="transfer">振替</option></select>
+        <input type="text" id="filter-search" placeholder="検索（カテゴリ/メモ/タグ/予定）" oninput="renderHistory()" style="flex:1;min-width:100px">
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Settings ═══ -->
+  <div id="settings" class="section">
+    <!-- 口座 -->
+    <div class="card">
+      <h2>口座を追加</h2>
+      <div class="form-row-4">
+        <div class="form-group"><label>口座名</label><input type="text" id="acc-name" placeholder="例: PayPay"></div>
+        <div class="form-group"><label>分類</label><select id="acc-class-type" onchange="toggleLiabilityFields()">
+          <option value="current-asset">流動資産（現金・銀行）</option>
+          <option value="current-liability">流動負債（クレカ・支払予定）</option>
+          <option value="long-asset">固定資産（将来の入金）</option>
+          <option value="long-liability">固定負債（長期借入）</option>
+        </select></div>
+        <div class="form-group"><label>現在残高</label><input type="number" id="acc-balance" placeholder="0" inputmode="numeric"></div>
+        <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary" onclick="addAccount()" style="width:100%">追加</button></div>
+      </div>
+      <div class="liability-fields" id="liability-fields" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><label>引落日（毎月○日）</label><input type="number" id="acc-payday" placeholder="27" min="1" max="31" inputmode="numeric"></div>
+          <div class="form-group"><label>引落元口座</label><select id="acc-payfrom"></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="card"><h2>登録済み口座</h2><div id="acc-list"></div></div>
+
+    <!-- 固定費 -->
+    <div class="card">
+      <h2>固定費を追加</h2>
+      <div class="form-row">
+        <div class="form-group"><label>名前</label><input type="text" id="fc-name" placeholder="例: 携帯代"></div>
+        <div class="form-group"><label>金額</label><input type="number" id="fc-amount" placeholder="0" inputmode="numeric"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>勘定科目</label><select id="fc-category"></select></div>
+        <div class="form-group"><label>引落日</label><input type="number" id="fc-day" placeholder="1" min="1" max="31" inputmode="numeric"></div>
+        <div class="form-group"><label>引落口座</label><select id="fc-account"></select></div>
+      </div>
+      <button class="btn btn-primary" onclick="addFixedCost()">追加</button>
+    </div>
+    <div class="card"><h2>登録済みの固定費</h2><div id="fc-list"></div></div>
+
+    <!-- 定期収入 -->
+    <div class="card">
+      <h2>定期収入を追加</h2>
+      <div class="form-row-3">
+        <div class="form-group"><label>名前</label><input type="text" id="inc-name" placeholder="例: バイト代"></div>
+        <div class="form-group"><label>金額</label><input type="number" id="inc-amount" placeholder="0" inputmode="numeric"></div>
+        <div class="form-group"><label>入金日</label><input type="number" id="inc-day" placeholder="25" min="1" max="31" inputmode="numeric"></div>
+      </div>
+      <div class="form-group"><label>入金口座</label><select id="inc-account"></select></div>
+      <button class="btn btn-primary" onclick="addIncomeSchedule()">追加</button>
+    </div>
+    <div class="card"><h2>登録済みの定期収入</h2><div id="inc-list"></div></div>
+
+    <!-- カテゴリ -->
+    <div class="card">
+      <h2>勘定科目（カテゴリ）管理</h2>
+      <h3 style="font-size:12px;color:var(--red);margin:10px 0 6px;font-weight:600">支出カテゴリ</h3>
+      <div class="chip-list" id="cat-expense-list"></div>
+      <div class="tag-add-row" style="margin-bottom:16px">
+        <input type="text" id="cat-expense-new" placeholder="新しい支出カテゴリ">
+        <button class="btn btn-small" onclick="addCat('expense')">追加</button>
+      </div>
+      <h3 style="font-size:12px;color:var(--green);margin:10px 0 6px;font-weight:600">収入カテゴリ</h3>
+      <div class="chip-list" id="cat-income-list"></div>
+      <div class="tag-add-row">
+        <input type="text" id="cat-income-new" placeholder="新しい収入カテゴリ">
+        <button class="btn btn-small" onclick="addCat('income')">追加</button>
+      </div>
+    </div>
+
+    <!-- タグ -->
+    <div class="card">
+      <h2>タグ管理</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">カテゴリ内をさらに細分化するためのタグ（例: 交際費 → 「遊びてえ」「明大祭実行委員会」）</p>
+      <div class="chip-list" id="tag-manage-list"></div>
+      <div class="tag-add-row">
+        <input type="text" id="tag-manage-new" placeholder="新しいタグ">
+        <button class="btn btn-small" onclick="addManagedTag()">追加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='';
+let txType='expense', allTx=[], allAccounts=[], categories={expense:[],income:[]}, allTags=[], selectedTags=[], editingTxId=null;
+
+// ─── Nav ───
+document.querySelectorAll('#main-nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.dataset.section;
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('#main-nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');btn.classList.add('active');
+    if(id==='dashboard')loadDashboard();
+    if(id==='record'){loadRecent();populateSelects();}
+    if(id==='calendar')loadCalendar();
+    if(id==='cashflow')loadCashFlow();
+    if(id==='ledger')loadLedger();
+    if(id==='settings'){loadAccounts();loadFixedCosts();loadIncomeSchedule();loadCatManager();loadTagManager();populateSelects();}
+  });
+});
+
+// ─── Helpers ───
+function yen(n){return(n<0?'−':'')+'¥'+Math.abs(n).toLocaleString()}
+function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function accName(id){const a=allAccounts.find(a=>a.id===id);return a?a.name:'?'}
+function accClassLabel(a){
+  if(a.type==='asset'&&a.class==='current')return'流動資産';
+  if(a.type==='asset'&&a.class==='long')return'固定資産';
+  if(a.type==='liability'&&a.class==='current')return'流動負債';
+  if(a.type==='liability'&&a.class==='long')return'固定負債';
+  return a.type==='asset'?'資産':'負債';
+}
+function accBadgeClass(a){
+  if(a.type==='asset'&&a.class==='long')return'l-asset';
+  if(a.type==='liability'&&a.class==='long')return'l-liability';
+  return a.type==='asset'?'c-asset':'c-liability';
+}
+async function api(p,o){const r=await fetch(API+p,o);return r.json()}
+function postJson(p,b){return api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+function putJson(p,b){return api(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+function delJson(p,b){return api(p,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+async function refreshAccounts(){allAccounts=await api('/api/accounts')}
+async function loadCategories(){categories=await api('/api/categories')}
+async function loadTagsData(){allTags=await api('/api/tags')}
+
+function populateSelects(){
+  const sels=['rec-account','tr-from','tr-to','fc-account','inc-account','acc-payfrom'];
+  sels.forEach(id=>{const el=document.getElementById(id);if(!el)return;const p=el.value;
+    el.innerHTML=allAccounts.map(a=>`<option value="${a.id}">${a.name}（${accClassLabel(a)}）</option>`).join('');
+    if(p)el.value=p;});
+  populateCatSelect();
+  populateFcCatSelect();
+  renderRecTagChips();
+}
+function populateCatSelect(){
+  const el=document.getElementById('rec-category');
+  const cats=txType==='income'?categories.income:categories.expense;
+  el.innerHTML=cats.map(c=>`<option>${c}</option>`).join('');
+}
+function populateFcCatSelect(){
+  const el=document.getElementById('fc-category');
+  if(!el)return;
+  el.innerHTML=categories.expense.map(c=>`<option>${c}</option>`).join('');
+}
+
+// ─── Dashboard ───
+async function loadDashboard(){
+  const[summary,accounts]=await Promise.all([api('/api/summary'),api('/api/accounts')]);
+  allAccounts=accounts;
+  const sp=document.getElementById('d-spendable');
+  sp.textContent=yen(summary.spendable);
+  sp.className='big-number '+(summary.spendable>=0?'green':'red');
+  document.getElementById('d-current-net').textContent=yen(summary.currentNet);
+  document.getElementById('d-networth').textContent=yen(summary.netWorth);
+  document.getElementById('d-c-assets').textContent=yen(summary.currentAssets);
+  document.getElementById('d-c-liabilities').textContent=yen(summary.currentLiabilities);
+  document.getElementById('d-l-assets').textContent=yen(summary.longAssets);
+  document.getElementById('d-l-liabilities').textContent=yen(summary.longLiabilities);
+  document.getElementById('d-expenses').textContent=yen(summary.monthExpenses);
+  document.getElementById('d-income').textContent=yen(summary.monthIncome);
+  const total=summary.monthExpenses+Math.max(0,summary.spendable);
+  if(total>0){const pct=Math.max(0,Math.min(100,(Math.max(0,summary.spendable)/total)*100));
+    const b=document.getElementById('d-progress');b.style.width=pct+'%';
+    b.style.background=pct<20?'var(--red)':pct<50?'var(--orange)':'var(--green)';}
+  document.getElementById('d-account-list').innerHTML=accounts.map(a=>`
+    <div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div></div>
+    <div class="amount" style="color:${a.balance<0?'var(--red)':a.type==='liability'&&a.balance>0?'var(--red)':'var(--green)'}">${yen(a.balance)}</div></div>`).join('');
+}
+
+// ─── Reconcile (残高照合) ───
+let reconcileOpen=false;
+function toggleReconcile(){
+  reconcileOpen=!reconcileOpen;
+  const el=document.getElementById('reconcile-body');
+  el.style.display=reconcileOpen?'':'none';
+  if(reconcileOpen)renderReconcile();
+}
+function renderReconcile(){
+  const el=document.getElementById('reconcile-body');
+  let h='<div style="margin-bottom:12px">';
+  allAccounts.forEach(a=>{
+    h+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}" style="font-size:9px">${accClassLabel(a)}</span></div>
+        <div style="font-size:12px;color:var(--text-dim)">帳簿: <span style="color:${a.balance<0?'var(--red)':'var(--text)'}; font-weight:600">${yen(a.balance)}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="rec-bal-${a.id}" placeholder="実残高" inputmode="numeric"
+          style="width:120px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none"
+          oninput="calcRecDiff(${a.id},${a.balance})">
+        <div id="rec-diff-${a.id}" style="width:120px;text-align:right;font-size:14px;font-weight:700;color:var(--text-muted)">--</div>
+      </div>
+    </div>`;
+  });
+  h+='</div>';
+  h+=`<div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="calcAllRecDiff()">差額を計算</button>
+    <span style="font-size:12px;color:var(--text-dim)">差額がある口座は「残高修正」で帳簿を更新できます</span>
+  </div>`;
+  h+=`<div id="rec-summary" style="margin-top:12px"></div>`;
+  el.innerHTML=h;
+}
+function calcRecDiff(accId,bookBal){
+  const input=document.getElementById('rec-bal-'+accId);
+  const diffEl=document.getElementById('rec-diff-'+accId);
+  const v=input.value;
+  if(v===''){diffEl.textContent='--';diffEl.style.color='var(--text-muted)';return;}
+  const actual=parseInt(v,10);
+  const diff=actual-bookBal;
+  if(diff===0){diffEl.textContent='一致';diffEl.style.color='var(--green)';}
+  else{diffEl.textContent=(diff>0?'+':'')+yen(diff);diffEl.style.color=diff>0?'var(--green)':'var(--red)';}
+}
+function calcAllRecDiff(){
+  let diffs=[];
+  allAccounts.forEach(a=>{
+    const input=document.getElementById('rec-bal-'+a.id);
+    if(!input||input.value==='')return;
+    calcRecDiff(a.id,a.balance);
+    const actual=parseInt(input.value,10);
+    const diff=actual-a.balance;
+    if(diff!==0)diffs.push({account:a,diff,actual});
+  });
+  const sumEl=document.getElementById('rec-summary');
+  if(!diffs.length){sumEl.innerHTML='<p style="color:var(--green);font-size:13px;padding:8px 0">全口座一致しています</p>';return;}
+  let h='<div style="margin-top:8px">';
+  h+='<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:8px">差額がある口座:</div>';
+  diffs.forEach(d=>{
+    const c=d.diff>0?'var(--green)':'var(--red)';
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">
+      <div><span style="font-weight:600">${escHtml(d.account.name)}</span>
+        <span style="font-size:12px;color:var(--text-dim);margin-left:8px">帳簿${yen(d.account.balance)} → 実残${yen(d.actual)}</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:${c};font-weight:700">${d.diff>0?'+':''}${yen(d.diff)}</span>
+        <button class="btn btn-small" onclick="applyRecAdj(${d.account.id},${d.actual})" style="font-size:11px">残高修正</button>
+      </div></div>`;
+  });
+  h+='</div>';
+  sumEl.innerHTML=h;
+}
+async function applyRecAdj(accId,newBal){
+  if(!confirm('帳簿残高を実残高に修正しますか？'))return;
+  await putJson('/api/accounts/'+accId,{balance:newBal});
+  await refreshAccounts();loadDashboard();
+  if(reconcileOpen)renderReconcile();
+}
+
+// ─── Record ───
+function setTxType(t){txType=t;
+  document.getElementById('tb-expense').className=t==='expense'?'sel-expense':'';
+  document.getElementById('tb-income').className=t==='income'?'sel-income':'';
+  document.getElementById('tb-transfer').className=t==='transfer'?'sel-transfer':'';
+  document.getElementById('tb-cc_detail').className=t==='cc_detail'?'sel-cc_detail':'';
+  document.getElementById('form-normal').style.display=t==='transfer'?'none':'';
+  document.getElementById('form-transfer').style.display=t==='transfer'?'':'none';
+  document.getElementById('cc-detail-note').style.display=t==='cc_detail'?'':'none';
+  document.getElementById('rec-account-label').textContent=t==='cc_detail'?'対象カード':'決済手段';
+  // CC明細時は決済手段をCC/負債口座のみに絞る
+  if(t==='cc_detail'){
+    const el=document.getElementById('rec-account');
+    el.innerHTML=allAccounts.filter(a=>a.type==='liability').map(a=>`<option value="${a.id}">${a.name}（${accClassLabel(a)}）</option>`).join('');
+  }else{
+    populateSelects();
+  }
+  populateCatSelect();
+}
+
+function renderRecTagChips(){
+  document.getElementById('rec-tag-chips').innerHTML=allTags.map(t=>
+    `<span class="tag-chip ${selectedTags.includes(t)?'selected':''}" onclick="toggleRecTag('${escHtml(t)}')">${escHtml(t)}</span>`).join('');
+}
+function toggleRecTag(t){if(selectedTags.includes(t))selectedTags=selectedTags.filter(x=>x!==t);else selectedTags.push(t);renderRecTagChips();}
+function addInlineTag(){const el=document.getElementById('rec-new-tag');const t=el.value.trim();if(!t)return;
+  if(!allTags.includes(t)){allTags.push(t);postJson('/api/tags',{tag:t});}
+  if(!selectedTags.includes(t))selectedTags.push(t);el.value='';renderRecTagChips();}
+
+async function addTransaction(){
+  if(txType==='transfer'){
+    const d=document.getElementById('tr-date').value,a=document.getElementById('tr-amount').value,m=document.getElementById('tr-memo').value;
+    const f=document.getElementById('tr-from').value,to=document.getElementById('tr-to').value;
+    if(!d||!a){alert('日付と金額を入力');return;}if(f===to){alert('振替元と振替先が同じ');return;}
+    await postJson('/api/transactions',{date:d,amount:+a,type:'transfer',fromAccountId:+f,toAccountId:+to,memo:m});
+    document.getElementById('tr-amount').value='';document.getElementById('tr-memo').value='';
+  }else{
+    const d=document.getElementById('rec-date').value,a=document.getElementById('rec-amount').value;
+    const c=document.getElementById('rec-category').value,ac=document.getElementById('rec-account').value;
+    const m=document.getElementById('rec-memo').value,sch=document.getElementById('rec-schedule').value;
+    if(!d||!a){alert('日付と金額を入力');return;}
+    await postJson('/api/transactions',{date:d,amount:+a,type:txType,category:c,accountId:+ac,tags:selectedTags.slice(),schedule:sch,memo:m});
+    document.getElementById('rec-amount').value='';document.getElementById('rec-memo').value='';
+    document.getElementById('rec-schedule').value='';selectedTags=[];renderRecTagChips();
+  }
+  await refreshAccounts();loadRecent();
+}
+
+async function loadRecent(){
+  allTx=await api('/api/transactions');
+  const recent=allTx.slice(-20).reverse();const el=document.getElementById('recent-list');
+  if(!recent.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">まだ記録がありません</p>';return;}
+  el.innerHTML=recent.map(txHtml).join('');
+}
+
+function txHierarchy(t){
+  let parts=[];
+  if(t.tags&&t.tags.length)parts.push(`<span class="h-tag">${t.tags.map(x=>'#'+escHtml(x)).join(' ')}</span>`);
+  if(t.schedule)parts.push(`<span class="h-schedule">${escHtml(t.schedule)}</span>`);
+  if(t.memo)parts.push(`<span class="h-memo">${escHtml(t.memo)}</span>`);
+  if(!parts.length)return'';
+  return'<div class="tx-hierarchy">'+parts.join('<span class="h-sep">›</span>')+'</div>';
+}
+
+function txHtml(t){
+  let label,cls,amt;
+  let row='';
+  if(t.type==='transfer'){
+    label=`振替: ${accName(t.fromAccountId)} → ${accName(t.toAccountId)}`;cls='transfer';amt=yen(t.amount);
+    const sub=t.date+(t.memo?' / '+escHtml(t.memo):'');
+    row+=`<div class="list-item"><div class="info"><div class="name">${label}</div><div class="sub">${sub}</div></div>
+      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
+  }else{
+    const isCcDetail=t.type==='cc_detail';
+    label=(isCcDetail?'<span style="color:var(--orange);font-size:11px">[CC明細]</span> ':'')+escHtml(t.category);
+    cls=isCcDetail?'expense':t.type;
+    amt=(t.type==='income'?'+':'−')+yen(t.amount);
+    const sub=t.date+' / '+accName(t.accountId)+(isCcDetail?' (残高変動なし)':'');
+    row+=`<div class="list-item"><div class="info"><div class="name">${label}</div>${txHierarchy(t)}<div class="sub">${sub}</div></div>
+      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
+  }
+  if(editingTxId===t.id){
+    row+=txEditForm(t);
+  }
+  return row;
+}
+
+function txEditForm(t){
+  if(t.type==='transfer'){
+    return`<div class="edit-form">
+      <div class="form-row-3" style="margin-bottom:10px">
+        <div class="form-group"><label>日付</label><input type="date" id="txe-date-${t.id}" value="${t.date}"></div>
+        <div class="form-group"><label>金額</label><input type="number" id="txe-amount-${t.id}" value="${t.amount}" inputmode="numeric"></div>
+        <div class="form-group"><label>メモ</label><input type="text" id="txe-memo-${t.id}" value="${escHtml(t.memo||'')}"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="width:auto;padding:8px 24px" onclick="saveEditTx(${t.id})">保存</button>
+        <button class="btn btn-ghost" onclick="cancelEditTx()">キャンセル</button>
+      </div></div>`;
+  }
+  const cats=t.type==='income'?categories.income:categories.expense;
+  const accs=t.type==='cc_detail'?allAccounts.filter(a=>a.type==='liability'):allAccounts;
+  const txTags=t.tags||[];
+  return`<div class="edit-form">
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group"><label>日付</label><input type="date" id="txe-date-${t.id}" value="${t.date}"></div>
+      <div class="form-group"><label>金額</label><input type="number" id="txe-amount-${t.id}" value="${t.amount}" inputmode="numeric"></div>
+    </div>
+    <div class="form-row-3" style="margin-bottom:10px">
+      <div class="form-group"><label>勘定科目</label><select id="txe-cat-${t.id}">${cats.map(c=>`<option${c===t.category?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>決済手段</label><select id="txe-acc-${t.id}">${accs.map(a=>`<option value="${a.id}"${a.id===t.accountId?' selected':''}>${a.name}</option>`).join('')}</select></div>
+      <div class="form-group"><label>予定</label><input type="text" id="txe-schedule-${t.id}" value="${escHtml(t.schedule||'')}"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>タグ（タップで切替）</label>
+      <div class="tag-chips" id="txe-tags-${t.id}">${allTags.map(tg=>`<span class="tag-chip ${txTags.includes(tg)?'selected':''}" onclick="toggleEditTxTag(${t.id},'${escHtml(tg)}')">${escHtml(tg)}</span>`).join('')}</div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label>メモ</label><input type="text" id="txe-memo-${t.id}" value="${escHtml(t.memo||'')}"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="width:auto;padding:8px 24px" onclick="saveEditTx(${t.id})">保存</button>
+      <button class="btn btn-ghost" onclick="cancelEditTx()">キャンセル</button>
+    </div></div>`;
+}
+
+// 編集中の取引のタグ状態を保持
+let editingTxTags={};
+function showEditTx(id){
+  const t=allTx.find(x=>x.id===id);
+  if(t) editingTxTags[id]=(t.tags||[]).slice();
+  editingTxId=id;loadRecent();
+}
+function cancelEditTx(){editingTxId=null;editingTxTags={};loadRecent();}
+function toggleEditTxTag(txId,tag){
+  if(!editingTxTags[txId])editingTxTags[txId]=[];
+  const arr=editingTxTags[txId];
+  const idx=arr.indexOf(tag);
+  if(idx>=0)arr.splice(idx,1);else arr.push(tag);
+  // チップの表示を更新
+  const container=document.getElementById('txe-tags-'+txId);
+  if(container){
+    container.innerHTML=allTags.map(tg=>`<span class="tag-chip ${arr.includes(tg)?'selected':''}" onclick="toggleEditTxTag(${txId},'${escHtml(tg)}')">${escHtml(tg)}</span>`).join('');
+  }
+}
+async function saveEditTx(id){
+  const t=allTx.find(x=>x.id===id);if(!t)return;
+  const d=document.getElementById('txe-date-'+id).value;
+  const a=document.getElementById('txe-amount-'+id).value;
+  const m=document.getElementById('txe-memo-'+id).value;
+  if(!d||!a){alert('日付と金額を入力');return;}
+  const body={date:d,amount:+a,memo:m};
+  if(t.type!=='transfer'){
+    body.category=document.getElementById('txe-cat-'+id).value;
+    body.accountId=+document.getElementById('txe-acc-'+id).value;
+    body.schedule=document.getElementById('txe-schedule-'+id).value;
+    body.tags=editingTxTags[id]||(t.tags||[]);
+  }
+  await putJson('/api/transactions/'+id,body);
+  editingTxId=null;editingTxTags={};
+  await refreshAccounts();loadRecent();
+}
+async function deleteTx(id){if(!confirm('この仕訳を削除しますか？'))return;await api('/api/transactions/'+id,{method:'DELETE'});await refreshAccounts();loadRecent();}
+
+// ─── Calendar ───
+let calMonth=new Date().toISOString().slice(0,7);
+
+async function loadCalendar(m){
+  if(m)calMonth=m;
+  const data=await api('/api/calendar?month='+calMonth);
+  const dows=['日','月','火','水','木','金','土'];
+  let html='';
+
+  // ナビ
+  html+=`<div class="cal-nav">
+    <button onclick="calPrev()">◀ 前月</button>
+    <span class="cal-label">${data.label}</span>
+    <button onclick="calNext()">次月 ▶</button>
+  </div>`;
+
+  // 月初残高
+  html+=`<div class="cal-start-bal">月初残高: <span>${yen(data.startBalance)}</span></div>`;
+
+  // グリッド
+  html+='<div class="cal-grid">';
+  dows.forEach((d,i)=>{
+    let cls='cal-dow';if(i===0)cls+=' sun';if(i===6)cls+=' sat';
+    html+=`<div class="${cls}">${d}</div>`;
+  });
+
+  // 空セル
+  for(let i=0;i<data.firstDow;i++) html+='<div class="cal-cell empty"></div>';
+
+  // 日セル
+  data.days.forEach(d=>{
+    const dow=(data.firstDow+d.day-1)%7;
+    let cls='cal-cell';
+    if(d.isToday)cls+=' today';
+    else if(d.isPast)cls+=' past';
+    if(d.events.length)cls+=' has-events';
+    if(dow===0)cls+=' sun';
+    if(dow===6)cls+=' sat';
+
+    html+=`<div class="${cls}">`;
+    html+=`<div class="cal-day-num">${d.day}</div>`;
+    html+='<div class="cal-events">';
+    d.events.forEach(e=>{
+      const tc=e.type==='expense'?'expense':'income';
+      const sc=e.actual?'':(e.cc?'cc-charge':'scheduled');
+      const prefix=e.amount>0?'+':'';
+      const ccLabel=e.cc?' [CC]':'';
+      html+=`<div class="cal-evt ${tc} ${sc}" title="${escHtml(e.name)}${ccLabel}: ${prefix}${yen(e.amount)}">${escHtml(e.name)}${ccLabel} ${prefix}${yen(e.amount)}</div>`;
+    });
+    html+='</div>';
+
+    // 残高（イベントがある日 or 今日）
+    if(d.events.length||d.isToday){
+      const bc=d.balance>=0?'var(--green)':'var(--red)';
+      html+=`<div class="cal-balance" style="color:${bc}">${yen(d.balance)}</div>`;
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+
+  // 月末サマリー
+  const ec=data.endBalance>=0?'var(--green)':'var(--red)';
+  html+=`<div class="cal-end-summary">
+    <div class="label">月末残高予測</div>
+    <div class="val" style="color:${ec}">${yen(data.endBalance)}</div>
+  </div>`;
+
+  document.getElementById('cal-body').innerHTML=html;
+}
+
+function calPrev(){
+  const[y,m]=calMonth.split('-').map(Number);
+  const nm=m===1?12:m-1;const ny=m===1?y-1:y;
+  loadCalendar(`${ny}-${String(nm).padStart(2,'0')}`);
+}
+function calNext(){
+  const[y,m]=calMonth.split('-').map(Number);
+  const nm=m===12?1:m+1;const ny=m===12?y+1:y;
+  loadCalendar(`${ny}-${String(nm).padStart(2,'0')}`);
+}
+
+// ─── Cash Flow ───
+async function loadCashFlow(){
+  const cf=await api('/api/cashflow');
+  let html='';
+  // サマリー
+  html+=`<div class="cf-summary">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+      <span style="font-size:13px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em">流動純資産（使えるお金）</span>
+      <span class="big-number accent" style="font-size:30px">${yen(cf.currentNet)}</span></div>
+    <div style="display:flex;gap:20px;font-size:13px;color:var(--text-dim)">
+      <span>流動資産: <span style="color:var(--green)">${yen(cf.currentAssets)}</span></span>
+      <span>流動負債: <span style="color:var(--red)">${yen(cf.currentLiabilities)}</span></span></div>
+    <div class="divider"></div>
+    <div style="display:flex;gap:20px;font-size:13px">
+      <span style="color:var(--text-dim)">今月の支出実績: <span style="color:var(--red);font-weight:600">${yen(cf.monthExpenses)}</span></span>
+      <span style="color:var(--text-dim)">今月の収入実績: <span style="color:var(--green);font-weight:600">${yen(cf.monthIncome)}</span></span></div>
+  </div>`;
+  // 流動負債の内訳
+  if(cf.creditCards.length){
+    cf.creditCards.forEach(cc=>{
+      if(cc.balance>0){
+        html+=`<div class="cf-credit"><div style="display:flex;justify-content:space-between;align-items:center">
+          <div><span style="font-weight:700">${escHtml(cc.name)}</span> <span class="acc-badge c-liability">流動負債</span></div>
+          <span style="color:var(--red);font-weight:700">${yen(cc.balance)}</span></div>
+          ${cc.payDay?`<div style="font-size:12px;color:var(--text-dim);margin-top:6px">毎月${cc.payDay}日 ${cc.payFromAccount?cc.payFromAccount+'から引落':''}  </div>`:''}</div>`;}
+    });
+  }
+  // 月別イベント
+  cf.months.forEach(m=>{
+    html+=`<div class="cf-month"><div class="cf-month-header"><span>${m.label}</span>
+      <span style="font-size:12px;color:var(--text-dim);font-weight:500">出費 <span style="color:var(--red)">${yen(m.totalExpense)}</span> / 収入 <span style="color:var(--green)">${yen(m.totalIncome)}</span></span></div>`;
+    if(m.events.length){
+      m.events.forEach(e=>{
+        const c=e.amount<0?'var(--red)':'var(--green)';
+        const ccStyle=e.cc?'opacity:.5;font-style:italic':'';
+        const ccTag=e.cc?' <span style="font-size:10px;color:var(--text-muted)">[CC計上済]</span>':'';
+        html+=`<div class="cf-event" style="${ccStyle}"><span class="cf-date">${e.date}</span><span class="cf-name">${escHtml(e.name)}${ccTag}<span class="cf-acc">${escHtml(e.account)}</span></span>
+          <span class="cf-amt" style="color:${c}">${e.amount>0?'+':''}${yen(e.amount)}</span>
+          <span class="cf-running">${yen(e.running)}</span></div>`;
+      });
+    }else{html+=`<div class="cf-event" style="color:var(--text-muted);justify-content:center;font-size:13px">予定なし</div>`;}
+    html+=`<div class="cf-footer"><span>月末残高予測</span><span style="color:${m.endBalance>=0?'var(--green)':'var(--red)'}">${yen(m.endBalance)}</span></div></div>`;
+  });
+  document.getElementById('cf-body').innerHTML=html;
+}
+
+// ─── Settings: Accounts ───
+function toggleLiabilityFields(){
+  const val=document.getElementById('acc-class-type').value;
+  document.getElementById('liability-fields').style.display=val==='current-liability'?'':'none';
+}
+async function addAccount(){
+  const n=document.getElementById('acc-name').value,ct=document.getElementById('acc-class-type').value,b=document.getElementById('acc-balance').value||'0';
+  if(!n){alert('口座名を入力');return;}
+  const[cls,type]=ct.split('-');
+  const body={name:n,type,class:cls,balance:+b};
+  if(ct==='current-liability'){body.payDay=+(document.getElementById('acc-payday').value||0);body.payFromAccountId=+(document.getElementById('acc-payfrom').value||0);}
+  await postJson('/api/accounts',body);
+  document.getElementById('acc-name').value='';document.getElementById('acc-balance').value='';
+  await refreshAccounts();loadAccounts();populateSelects();
+}
+async function loadAccounts(){
+  await refreshAccounts();const el=document.getElementById('acc-list');
+  if(!allAccounts.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">口座なし</p>';return;}
+  el.innerHTML=allAccounts.map(a=>{
+    let extra='';if(a.type==='liability'&&a.class==='current'&&a.payDay)extra=` / ${a.payDay}日引落`;
+    return`<div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div>
+      <div class="sub">${accClassLabel(a)}${extra}</div></div>
+      <div class="amount" style="color:${a.balance<0?'var(--red)':'var(--text)'}">${yen(a.balance)}</div>
+      <div class="actions">
+        <button class="btn btn-edit" onclick="editAccBal(${a.id},${a.balance})">残高修正</button>
+        <button class="btn btn-danger" onclick="deleteAcc(${a.id})">削除</button></div></div>`;}).join('');
+}
+async function editAccBal(id,cur){const v=prompt('新しい残高',cur);if(v===null)return;
+  await putJson('/api/accounts/'+id,{balance:+v});
+  await refreshAccounts();loadAccounts();}
+async function deleteAcc(id){if(!confirm('削除しますか？'))return;const r=await fetch(API+'/api/accounts/'+id,{method:'DELETE'});const d=await r.json();if(d.error){alert(d.error);return;}
+  await refreshAccounts();loadAccounts();populateSelects();}
+
+// ─── Settings: Fixed Costs ───
+let editingFcId=null;
+async function addFixedCost(){
+  const n=document.getElementById('fc-name').value,a=document.getElementById('fc-amount').value,c=document.getElementById('fc-category').value;
+  const d=document.getElementById('fc-day').value,ac=document.getElementById('fc-account').value;
+  if(!n||!a||!d){alert('すべて入力');return;}
+  await postJson('/api/fixed-costs',{name:n,amount:+a,category:c,day:+d,accountId:+ac});
+  document.getElementById('fc-name').value='';document.getElementById('fc-amount').value='';document.getElementById('fc-day').value='';loadFixedCosts();}
+
+async function loadFixedCosts(){
+  const fcs=await api('/api/fixed-costs');const el=document.getElementById('fc-list');
+  if(!fcs.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">固定費なし</p>';return;}
+  el.innerHTML=fcs.map(f=>{
+    let row=`<div class="list-item"><div class="info"><div class="name">${escHtml(f.name)}</div>
+      <div class="sub">${f.category} / 毎月${f.day}日 / ${accName(f.accountId)}</div></div>
+      <div class="amount expense">${yen(f.amount)}</div>
+      <div class="actions"><button class="btn btn-edit" onclick="showEditFC(${f.id})">編集</button><button class="btn btn-danger" onclick="deleteFC(${f.id})">削除</button></div></div>`;
+    if(editingFcId===f.id){
+      row+=`<div class="edit-form" id="fc-edit-${f.id}">
+        <div class="form-row-3" style="margin-bottom:10px">
+          <div class="form-group"><label>名前</label><input type="text" id="fce-name-${f.id}" value="${escHtml(f.name)}"></div>
+          <div class="form-group"><label>金額</label><input type="number" id="fce-amount-${f.id}" value="${f.amount}" inputmode="numeric"></div>
+          <div class="form-group"><label>引落日</label><input type="number" id="fce-day-${f.id}" value="${f.day}" min="1" max="31" inputmode="numeric"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group"><label>勘定科目</label><select id="fce-cat-${f.id}">${categories.expense.map(c=>`<option${c===f.category?' selected':''}>${c}</option>`).join('')}</select></div>
+          <div class="form-group"><label>引落口座</label><select id="fce-acc-${f.id}">${allAccounts.map(a=>`<option value="${a.id}"${a.id===f.accountId?' selected':''}>${a.name}</option>`).join('')}</select></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="width:auto;padding:8px 24px" onclick="saveEditFC(${f.id})">保存</button>
+          <button class="btn btn-ghost" onclick="cancelEditFC()">キャンセル</button>
+        </div>
+      </div>`;
+    }
+    return row;
+  }).join('');
+}
+function showEditFC(id){editingFcId=id;loadFixedCosts();}
+function cancelEditFC(){editingFcId=null;loadFixedCosts();}
+async function saveEditFC(id){
+  const n=document.getElementById('fce-name-'+id).value;
+  const a=document.getElementById('fce-amount-'+id).value;
+  const d=document.getElementById('fce-day-'+id).value;
+  const c=document.getElementById('fce-cat-'+id).value;
+  const ac=document.getElementById('fce-acc-'+id).value;
+  if(!n||!a||!d){alert('すべて入力');return;}
+  await putJson('/api/fixed-costs/'+id,{name:n,amount:+a,day:+d,category:c,accountId:+ac});
+  editingFcId=null;loadFixedCosts();
+}
+async function deleteFC(id){if(!confirm('削除？'))return;await api('/api/fixed-costs/'+id,{method:'DELETE'});loadFixedCosts();}
+
+// ─── Settings: Income Schedule ───
+let editingIncId=null;
+async function addIncomeSchedule(){
+  const n=document.getElementById('inc-name').value,a=document.getElementById('inc-amount').value,d=document.getElementById('inc-day').value,ac=document.getElementById('inc-account').value;
+  if(!n||!a||!d){alert('すべて入力');return;}
+  await postJson('/api/income-schedule',{name:n,amount:+a,day:+d,accountId:+ac});
+  document.getElementById('inc-name').value='';document.getElementById('inc-amount').value='';document.getElementById('inc-day').value='';loadIncomeSchedule();}
+
+async function loadIncomeSchedule(){
+  const incs=await api('/api/income-schedule');const el=document.getElementById('inc-list');
+  if(!incs.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">定期収入なし</p>';return;}
+  el.innerHTML=incs.map(i=>{
+    let row=`<div class="list-item"><div class="info"><div class="name">${escHtml(i.name)}</div>
+      <div class="sub">毎月${i.day}日 / ${accName(i.accountId)}</div></div>
+      <div class="amount income">+${yen(i.amount)}</div>
+      <div class="actions"><button class="btn btn-edit" onclick="showEditInc(${i.id})">編集</button><button class="btn btn-danger" onclick="deleteInc(${i.id})">削除</button></div></div>`;
+    if(editingIncId===i.id){
+      row+=`<div class="edit-form" id="inc-edit-${i.id}">
+        <div class="form-row-3" style="margin-bottom:10px">
+          <div class="form-group"><label>名前</label><input type="text" id="ince-name-${i.id}" value="${escHtml(i.name)}"></div>
+          <div class="form-group"><label>金額</label><input type="number" id="ince-amount-${i.id}" value="${i.amount}" inputmode="numeric"></div>
+          <div class="form-group"><label>入金日</label><input type="number" id="ince-day-${i.id}" value="${i.day}" min="1" max="31" inputmode="numeric"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px"><label>入金口座</label><select id="ince-acc-${i.id}">${allAccounts.map(a=>`<option value="${a.id}"${a.id===i.accountId?' selected':''}>${a.name}</option>`).join('')}</select></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="width:auto;padding:8px 24px" onclick="saveEditInc(${i.id})">保存</button>
+          <button class="btn btn-ghost" onclick="cancelEditInc()">キャンセル</button>
+        </div>
+      </div>`;
+    }
+    return row;
+  }).join('');
+}
+function showEditInc(id){editingIncId=id;loadIncomeSchedule();}
+function cancelEditInc(){editingIncId=null;loadIncomeSchedule();}
+async function saveEditInc(id){
+  const n=document.getElementById('ince-name-'+id).value;
+  const a=document.getElementById('ince-amount-'+id).value;
+  const d=document.getElementById('ince-day-'+id).value;
+  const ac=document.getElementById('ince-acc-'+id).value;
+  if(!n||!a||!d){alert('すべて入力');return;}
+  await putJson('/api/income-schedule/'+id,{name:n,amount:+a,day:+d,accountId:+ac});
+  editingIncId=null;loadIncomeSchedule();
+}
+async function deleteInc(id){if(!confirm('削除？'))return;await api('/api/income-schedule/'+id,{method:'DELETE'});loadIncomeSchedule();}
+
+// ─── Settings: Category Manager ───
+async function loadCatManager(){
+  await loadCategories();
+  ['expense','income'].forEach(type=>{
+    const el=document.getElementById('cat-'+type+'-list');
+    el.innerHTML=categories[type].map(c=>`<div class="chip-item"><span>${escHtml(c)}</span><button class="chip-del" onclick="delCat('${type}','${escHtml(c)}')">&times;</button></div>`).join('');
+  });
+}
+async function addCat(type){const el=document.getElementById('cat-'+type+'-new');const n=el.value.trim();if(!n)return;
+  await postJson('/api/categories',{type,name:n});el.value='';loadCatManager();populateCatSelect();populateFcCatSelect();}
+async function delCat(type,name){if(!confirm(name+'を削除？'))return;await delJson('/api/categories',{type,name});loadCatManager();populateCatSelect();populateFcCatSelect();}
+
+// ─── Settings: Tag Manager ───
+async function loadTagManager(){
+  await loadTagsData();
+  document.getElementById('tag-manage-list').innerHTML=allTags.map(t=>`<div class="chip-item"><span>${escHtml(t)}</span><button class="chip-del" onclick="delManagedTag('${escHtml(t)}')">&times;</button></div>`).join('');
+}
+async function addManagedTag(){const el=document.getElementById('tag-manage-new');const t=el.value.trim();if(!t)return;
+  await postJson('/api/tags',{tag:t});el.value='';loadTagManager();}
+async function delManagedTag(t){if(!confirm('#'+t+'を削除？'))return;await delJson('/api/tags',{tag:t});loadTagManager();}
+
+// ─── Ledger ───
+async function loadLedger(){allTx=await api('/api/transactions');await refreshAccounts();
+  const months=getMonths(allTx);fillSel('pl-month',months,false);fillSel('chart-month',months,false);fillSel('filter-month',months,true);
+  loadPL();loadBS();renderChart();renderHistory();}
+function getMonths(txs){const s=new Set();txs.forEach(t=>s.add(t.date.substring(0,7)));return Array.from(s).sort().reverse();}
+function fillSel(id,months,addAll){const el=document.getElementById(id);const p=el.value;
+  el.innerHTML=(addAll?'<option value="">全期間</option>':'')+months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(p&&Array.from(el.options).some(o=>o.value===p))el.value=p;}
+
+async function loadPL(){const m=document.getElementById('pl-month').value;
+  if(!m){document.getElementById('pl-body').innerHTML='<p style="color:var(--text-dim);padding:12px">データなし</p>';return;}
+  const pl=await api('/api/pl?month='+m);let h='';
+  h+='<div class="fs-section-title">収益の部</div>';
+  const ie=Object.entries(pl.income).sort((a,b)=>b[1]-a[1]);
+  if(ie.length)ie.forEach(([c,a])=>{h+=`<div class="fs-row"><span>${c}</span><span class="val" style="color:var(--green)">${yen(a)}</span></div>`;});
+  else h+='<div class="fs-row"><span style="color:var(--text-muted)">なし</span><span>--</span></div>';
+  h+=`<div class="fs-row total"><span>収益合計</span><span class="val" style="color:var(--green)">${yen(pl.totalIncome)}</span></div>`;
+  h+='<div class="fs-section-title">費用の部</div>';
+  const ee=Object.entries(pl.expenses).sort((a,b)=>b[1]-a[1]);
+  if(ee.length)ee.forEach(([c,a])=>{h+=`<div class="fs-row"><span>${c}</span><span class="val" style="color:var(--red)">${yen(a)}</span></div>`;});
+  else h+='<div class="fs-row"><span style="color:var(--text-muted)">なし</span><span>--</span></div>';
+  h+=`<div class="fs-row total"><span>費用合計</span><span class="val" style="color:var(--red)">${yen(pl.totalExpenses)}</span></div>`;
+  const nc=pl.netIncome>=0?'var(--green)':'var(--red)';
+  h+=`<div class="fs-row grand-total"><span>当期純利益</span><span class="val" style="color:${nc}">${yen(pl.netIncome)}</span></div>`;
+  document.getElementById('pl-body').innerHTML=h;}
+
+async function loadBS(){const bs=await api('/api/bs');
+  // 左: 資産
+  let L='<div class="bs-col-header">資産の部</div>';
+  L+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600">流動資産</div>';
+  if(bs.currentAssets.length)bs.currentAssets.forEach(a=>{L+=`<div class="bs-row"><span>${a.name}</span><span style="color:${a.balance<0?'var(--red)':'var(--text)'}">${yen(a.balance)}</span></div>`;});
+  else L+='<div class="bs-row"><span style="color:var(--text-muted)">なし</span><span>¥0</span></div>';
+  L+=`<div class="bs-subtotal"><span>流動資産計</span><span>${yen(bs.totalCurrentAssets)}</span></div>`;
+  if(bs.longAssets.length){
+    L+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">固定資産</div>';
+    bs.longAssets.forEach(a=>{L+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
+    L+=`<div class="bs-subtotal"><span>固定資産計</span><span>${yen(bs.totalLongAssets)}</span></div>`;
+  }
+  L+=`<div class="bs-total"><span>資産合計</span><span>${yen(bs.totalAssets)}</span></div>`;
+
+  // 右: 負債+純資産
+  let R='<div class="bs-col-header">負債・純資産の部</div>';
+  R+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600">流動負債</div>';
+  if(bs.currentLiabilities.length)bs.currentLiabilities.forEach(a=>{R+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
+  else R+='<div class="bs-row"><span style="color:var(--text-muted)">なし</span><span>¥0</span></div>';
+  R+=`<div class="bs-subtotal"><span>流動負債計</span><span>${yen(bs.totalCurrentLiabilities)}</span></div>`;
+  if(bs.longLiabilities.length){
+    R+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">固定負債</div>';
+    bs.longLiabilities.forEach(a=>{R+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
+    R+=`<div class="bs-subtotal"><span>固定負債計</span><span>${yen(bs.totalLongLiabilities)}</span></div>`;
+  }
+  R+=`<div class="bs-subtotal"><span>負債合計</span><span>${yen(bs.totalLiabilities)}</span></div>`;
+  R+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">純資産</div>';
+  R+=`<div class="bs-total"><span>純資産</span><span style="color:var(--accent)">${yen(bs.netWorth)}</span></div>`;
+  document.getElementById('bs-body').innerHTML=`<div class="bs-grid"><div class="bs-col">${L}</div><div class="bs-col">${R}</div></div>`;}
+
+const CC={'食費':'#5b7fff','交通費':'#fbbf24','交際費':'#f472b6','日用品費':'#34d399','趣味・娯楽費':'#a78bfa','通信費':'#22d3ee','水道光熱費':'#74c0fc','住居費':'#f87171','保険料':'#fb923c','医療費':'#ef4444','被服費':'#c084fc','教育費':'#2dd4bf','雑費':'#6b7280','必需品':'#a3e635'};
+function renderChart(){const m=document.getElementById('chart-month').value;const el=document.getElementById('chart');
+  if(!m){el.innerHTML='<p style="color:var(--text-dim);font-size:13px">データなし</p>';return;}
+  const exps=allTx.filter(t=>(t.type==='expense'||t.type==='cc_detail')&&t.date.startsWith(m));const ct={};
+  exps.forEach(t=>{ct[t.category]=(ct[t.category]||0)+t.amount;});
+  const cats=Object.keys(ct).sort((a,b)=>ct[b]-ct[a]);const mx=Math.max(...Object.values(ct),1);
+  if(!cats.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px">支出データなし</p>';return;}
+  el.innerHTML=cats.map(c=>{const h=Math.max(8,(ct[c]/mx)*160);const co=CC[c]||'#6b7280';
+    return`<div class="chart-bar-wrap"><div class="chart-value">${yen(ct[c])}</div><div class="chart-bar" style="height:${h}px;background:${co}"></div><div class="chart-label">${c}</div></div>`;}).join('');}
+
+function renderHistory(){const m=document.getElementById('filter-month').value,tp=document.getElementById('filter-type').value,s=document.getElementById('filter-search').value.toLowerCase();
+  let f=allTx.slice().reverse();
+  if(m)f=f.filter(t=>t.date.startsWith(m));
+  if(tp){
+    if(tp==='expense')f=f.filter(t=>t.type==='expense'||t.type==='cc_detail');
+    else f=f.filter(t=>t.type===tp);
+  }
+  if(s)f=f.filter(t=>(t.category||'').toLowerCase().includes(s)||(t.memo||'').toLowerCase().includes(s)||(t.tags||[]).some(tg=>tg.toLowerCase().includes(s))||(t.schedule||'').toLowerCase().includes(s));
+  const el=document.getElementById('history-list');
+  if(!f.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">該当なし</p>';return;}
+  el.innerHTML=f.map(t=>{let label,cls,amt;
+    const isCcD=t.type==='cc_detail';
+    if(t.type==='transfer'){label=`振替: ${accName(t.fromAccountId)} → ${accName(t.toAccountId)}`;cls='transfer';amt=yen(t.amount);}
+    else{label=(isCcD?'<span style="color:var(--orange);font-size:10px">[CC明細]</span> ':'')+escHtml(t.category);cls=isCcD?'expense':t.type;amt=(t.type==='income'?'+':'−')+yen(t.amount);}
+    return`<div class="list-item"><div class="info"><div class="name">${label}</div>${txHierarchy(t)}<div class="sub">${t.date}${t.accountId?' / '+accName(t.accountId):''}</div></div><div class="amount ${cls}">${amt}</div></div>`;}).join('');}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded',async()=>{
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('rec-date').value=today;document.getElementById('tr-date').value=today;
+  await Promise.all([refreshAccounts(),loadCategories(),loadTagsData()]);
+  populateSelects();loadDashboard();
+});
+</script>
+</body>
+</html>
