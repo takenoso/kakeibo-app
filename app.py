@@ -735,6 +735,26 @@ def build_cashflow_events(data, month_key, offset, today):
                     "cc": False,
                     "liability_pay": False,
                 })
+        # CC未仕訳雑費（CC残高 - cc_detail - 固定費 の差額）
+        for a in data["accounts"]:
+            if not is_cc_account(a):
+                continue
+            cc_det_sum = sum(t["amount"] for t in data["transactions"]
+                             if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                             and t["date"].startswith(month_key))
+            cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
+                            if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
+            unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
+            if unjournaled > 0:
+                events.append({
+                    "day": today.day,
+                    "name": f"{a['name']} 雑費",
+                    "amount": -unjournaled,
+                    "type": "expense",
+                    "account": a["name"],
+                    "cc": False,
+                    "liability_pay": False,
+                })
 
     # 固定費
     for fc in data["fixedCosts"]:
@@ -1124,6 +1144,27 @@ def get_calendar():
                 # CC明細 → 残高に反映（CC負債はhandに含まれないため明示的に減算）
                 elif tx["type"] == "cc_detail":
                     running -= tx["amount"]
+
+        # CC未仕訳雑費（当月・今日に計上）
+        if month_str == this_ym and d == today.day:
+            for a in data["accounts"]:
+                if not is_cc_account(a):
+                    continue
+                cc_det_sum = sum(t["amount"] for t in data["transactions"]
+                                 if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                                 and t["date"].startswith(this_ym))
+                cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
+                                if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
+                unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
+                if unjournaled > 0:
+                    events.append({
+                        "name": f"{a['name']} 雑費",
+                        "amount": -unjournaled,
+                        "type": "expense",
+                        "actual": True,
+                        "cc": False,
+                    })
+                    running -= unjournaled
 
         # 未来日: スケジュールイベント
         is_future = (month_str > this_ym) or (month_str == this_ym and day_date > today)

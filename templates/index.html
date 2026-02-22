@@ -885,7 +885,7 @@ async function loadCalendar(m){
     html+=`<div class="cal-day-num">${d.day}</div>`;
     html+='<div class="cal-events">';
     d.events.forEach(e=>{
-      const tc=e.type==='expense'?'expense':'income';
+      const tc=(e.type==='expense'||e.type==='cc_detail')?'expense':'income';
       const sc=e.actual?'':(e.cc?'cc-charge':'scheduled');
       const prefix=e.amount>0?'+':'';
       const ccLabel=e.cc?' [CC]':'';
