@@ -748,32 +748,9 @@ def build_cashflow_events(data, month_key, offset, today):
                     "amount": -tx["amount"],
                     "type": "cc_detail",
                     "account": acc["name"] if acc else "",
-                    "cc": True,   # 情報表示のみ。残高計算はCC雑費で行う
+                    "cc": True,   # 情報表示のみ。CC残高は開始残高に織込み済み
                     "liability_pay": False,
                 })
-        # CC未仕訳雑費（CC残高 - 当サイクルcc_detail - 固定費経過分）— 残高計算に影響する
-        for a in data["accounts"]:
-            if not is_cc_account(a):
-                continue
-            cycle_start = get_cc_cycle_start(a, today).isoformat()
-            today_iso = today.isoformat()
-            cc_det_sum = sum(t["amount"] for t in data["transactions"]
-                             if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                             and cycle_start <= t["date"] <= today_iso)
-            cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
-                            if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
-            unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
-            if unjournaled > 0:
-                events.append({
-                    "day": today.day,
-                    "name": f"{a['name']} 雑費",
-                    "amount": -unjournaled,
-                    "type": "expense",
-                    "account": a["name"],
-                    "cc": False,   # 残高計算に影響する
-                    "liability_pay": False,
-                })
-
     # 固定費（CC固定費も含めてすべて残高計算に影響する cc=False）
     for fc in data["fixedCosts"]:
         day = fc["day"]
@@ -838,8 +815,9 @@ def get_cashflow():
                 "payFromAccount": pay_from["name"] if pay_from else "",
             })
 
-    # 持ってるお金から開始
-    running = hand
+    # 経済的純額（資産 - CC残高）からスタート
+    cc_total = sum(a["balance"] for a in data["accounts"] if is_cc_account(a))
+    running = hand - cc_total
     months = []
 
     for offset in range(3):
@@ -1118,8 +1096,9 @@ def get_calendar():
         })
 
     # ── 当月 or 未来月 ──
-    # 持ってるお金（hand）からスタート
-    running = hand
+    # 経済的純額（資産 - CC残高）からスタート
+    cc_total = sum(a["balance"] for a in data["accounts"] if is_cc_account(a))
+    running = hand - cc_total
 
     # 未来月の場合: 今日〜対象月初の間のイベントを順算
     if month_str > this_ym:
@@ -1157,30 +1136,7 @@ def get_calendar():
                 # 未到着収入 → 残高に反映
                 if tx["id"] in pending_ids:
                     running += tx["amount"]
-                # cc_detailは情報表示のみ。残高への影響なし（CC残高はCC雑費で計上）
-
-        # CC未仕訳雑費（当月・今日に計上）
-        if month_str == this_ym and d == today.day:
-            today_iso = today.isoformat()
-            for a in data["accounts"]:
-                if not is_cc_account(a):
-                    continue
-                cycle_start = get_cc_cycle_start(a, today).isoformat()
-                cc_det_sum = sum(t["amount"] for t in data["transactions"]
-                                 if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                                 and cycle_start <= t["date"] <= today_iso)
-                cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
-                                if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
-                unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
-                if unjournaled > 0:
-                    events.append({
-                        "name": f"{a['name']} 雑費",
-                        "amount": -unjournaled,
-                        "type": "expense",
-                        "actual": True,
-                        "cc": False,
-                    })
-                    running -= unjournaled
+                # cc_detailは情報表示のみ。残高への影響なし（CC残高は開始残高に織込み済み）
 
         # 未来日: スケジュールイベント
         is_future = (month_str > this_ym) or (month_str == this_ym and day_date > today)
