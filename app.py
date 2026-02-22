@@ -956,8 +956,9 @@ def get_pl():
         if unsorted > 0:
             cc_unsorted += unsorted
     if cc_unsorted > 0:
-        expenses_by_cat["CC未仕訳（雑費）"] = expenses_by_cat.get("CC未仕訳（雑費）", 0) + cc_unsorted
-        expense_detail.setdefault("CC未仕訳（雑費）", {}).setdefault("(タグなし)", {})["(予定なし)"] = cc_unsorted
+        expenses_by_cat["雑費"] = expenses_by_cat.get("雑費", 0) + cc_unsorted
+        expense_detail.setdefault("雑費", {}).setdefault("(タグなし)", {})
+        expense_detail["雑費"]["(タグなし)"]["CC未仕訳"] = expense_detail["雑費"]["(タグなし)"].get("CC未仕訳", 0) + cc_unsorted
 
     total_income = sum(income_by_cat.values())
     total_expenses = sum(expenses_by_cat.values())
