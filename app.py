@@ -894,7 +894,27 @@ def get_pl():
             income_by_cat[cat] = income_by_cat.get(cat, 0) + t["amount"]
             income_detail.setdefault(cat, {}).setdefault(tag_key, {})
             income_detail[cat][tag_key][sch_key] = income_detail[cat][tag_key].get(sch_key, 0) + t["amount"]
-    # CC未仕訳: 当月CCへのexpense合計 − 当月cc_detail合計 → 雑費（全月対応）
+    # CC払いの固定費を当月P/Lに自動計上
+    today = date.today()
+    today_ym = today.strftime("%Y-%m")
+    pl_fc_by_acc = {}  # {acc_id: sum} 固定費CC分の合計（unjournaled計算用）
+    for fc in data["fixedCosts"]:
+        fc_acc = get_account(data, fc.get("accountId"))
+        if not fc_acc or not is_cc_account(fc_acc):
+            continue
+        # 当月に発生済みか判定（当月: day<=今日, 過去月: 全件）
+        if ym == today_ym and fc["day"] > today.day:
+            continue
+        cat = fc.get("category", "雑費")
+        tags = fc.get("tags", [])
+        tag_key = ", ".join(tags) if tags else "(タグなし)"
+        expenses_by_cat[cat] = expenses_by_cat.get(cat, 0) + fc["amount"]
+        expense_detail.setdefault(cat, {}).setdefault(tag_key, {})
+        expense_detail[cat][tag_key]["(固定費)"] = expense_detail[cat][tag_key].get("(固定費)", 0) + fc["amount"]
+        acc_id = fc_acc["id"]
+        pl_fc_by_acc[acc_id] = pl_fc_by_acc.get(acc_id, 0) + fc["amount"]
+
+    # CC未仕訳: expense on CC − cc_detail − 固定費CC分（全月対応）
     cc_unsorted = 0
     for a in data["accounts"]:
         if not is_cc_account(a):
@@ -909,7 +929,8 @@ def get_pl():
             if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
             and t["date"].startswith(ym)
         )
-        unsorted = cc_exp_sum - cc_det_sum
+        fc_sum = pl_fc_by_acc.get(a["id"], 0)
+        unsorted = cc_exp_sum - cc_det_sum - fc_sum
         if unsorted > 0:
             cc_unsorted += unsorted
     if cc_unsorted > 0:
