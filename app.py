@@ -719,33 +719,6 @@ def build_cashflow_events(data, month_key, offset, today):
             "cc": False, "liability_pay": True,
         })
 
-    # CC引落イベント（請求サイクル考慮）
-    for a in data["accounts"]:
-        if not is_cc_account(a):
-            continue
-        pay_from = get_account(data, a.get("payFromAccountId"))
-        day = a["payDay"]
-        if offset == 0 and day <= today.day:
-            continue
-        fc_this = sum(fc["amount"] for fc in data["fixedCosts"]
-                      if fc.get("accountId") == a["id"])
-        if offset == 0:
-            # 今月支払い = 現在の残高（今の請求サイクル分）
-            cc_amt = a["balance"]
-        elif offset == 1 and today.day >= a["payDay"]:
-            # 今月の支払日が過ぎた場合: 残高（payDay以降の新規分）+ 来月の固定費
-            cc_amt = a["balance"] + fc_this
-        else:
-            # 再来月以降、または今月payDayが未来の場合の翌月: 固定費のみ
-            cc_amt = fc_this
-        if cc_amt > 0:
-            events.append({
-                "day": day, "name": f"{a['name']}引落",
-                "amount": -cc_amt, "type": "expense",
-                "account": pay_from["name"] if pay_from else "",
-                "cc": False, "liability_pay": True,
-            })
-
     # 固定費
     for fc in data["fixedCosts"]:
         day = fc["day"]
@@ -1136,30 +1109,6 @@ def get_calendar():
                 if acc and acc["type"] == "liability" and not is_cc_account(acc):
                     if tx["type"] == "expense":
                         running -= tx["amount"]
-
-            # CC引落（請求サイクル考慮）
-            next_m = today.month + 1 if today.month < 12 else 1
-            next_y = today.year if today.month < 12 else today.year + 1
-            next_ym = f"{next_y}-{next_m:02d}"
-            for a in data["accounts"]:
-                if is_cc_account(a) and a["payDay"] == d:
-                    fc_this = sum(fc["amount"] for fc in data["fixedCosts"]
-                                  if fc.get("accountId") == a["id"])
-                    if month_str == this_ym:
-                        cc_amt = a["balance"]
-                    elif month_str == next_ym and today.day >= a["payDay"]:
-                        # 今月のpayDayが過ぎた → 来月引落 = 残高 + 来月固定費
-                        cc_amt = a["balance"] + fc_this
-                    else:
-                        cc_amt = fc_this
-                    if cc_amt > 0:
-                        pay_from = get_account(data, a.get("payFromAccountId"))
-                        events.append({
-                            "name": f"{a['name']}引落",
-                            "amount": -cc_amt, "type": "expense",
-                            "actual": False, "cc": False,
-                        })
-                        running -= cc_amt
 
             # 固定費
             for fc in data["fixedCosts"]:
