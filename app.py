@@ -719,6 +719,23 @@ def build_cashflow_events(data, month_key, offset, today):
             "cc": False, "liability_pay": True,
         })
 
+    # CC明細実績（当月分のみ）
+    if offset == 0:
+        for tx in data["transactions"]:
+            if tx["type"] == "cc_detail" and tx["date"].startswith(month_key):
+                tx_day = int(tx["date"][8:10])
+                acc = get_account(data, tx.get("accountId"))
+                cat = tx.get("category", "") or tx.get("memo", "CC明細")
+                events.append({
+                    "day": tx_day,
+                    "name": cat,
+                    "amount": -tx["amount"],
+                    "type": "cc_detail",
+                    "account": acc["name"] if acc else "",
+                    "cc": False,
+                    "liability_pay": False,
+                })
+
     # 固定費
     for fc in data["fixedCosts"]:
         day = fc["day"]
@@ -991,7 +1008,7 @@ def get_calendar():
     # 対象月の記録済み取引を日別に集計
     tx_by_day = {}
     for tx in data["transactions"]:
-        if tx["date"].startswith(month_str) and tx["type"] in ("expense", "income"):
+        if tx["date"].startswith(month_str) and tx["type"] in ("expense", "income", "cc_detail"):
             d = int(tx["date"][8:10])
             tx_by_day.setdefault(d, []).append(tx)
 
@@ -1000,7 +1017,7 @@ def get_calendar():
         schedule_groups = {}
         no_schedule = []
         for tx in txs:
-            amt = -tx["amount"] if tx["type"] == "expense" else tx["amount"]
+            amt = -tx["amount"] if tx["type"] in ("expense", "cc_detail") else tx["amount"]
             sch = tx.get("schedule", "")
             if sch:
                 if sch not in schedule_groups:
@@ -1026,14 +1043,18 @@ def get_calendar():
         start_balance = hand
         # 対象月以降の全取引を逆算してスタートを求める
         for tx in data["transactions"]:
-            if tx["date"] >= f"{year}-{month:02d}-01" and tx["type"] in ("expense", "income"):
-                acc = get_account(data, tx.get("accountId"))
-                # アセット口座の取引のみ逆算（負債口座はhandに含まない）
-                if acc and acc["type"] == "asset" and acc.get("class") == "current":
-                    if tx["type"] == "expense":
-                        start_balance += tx["amount"]
-                    elif tx["type"] == "income":
-                        start_balance -= tx["amount"]
+            if tx["date"] >= f"{year}-{month:02d}-01":
+                if tx["type"] == "cc_detail":
+                    # CC明細は逆算でadd back（キャッシュベースに含まれていないため）
+                    start_balance += tx["amount"]
+                elif tx["type"] in ("expense", "income"):
+                    acc = get_account(data, tx.get("accountId"))
+                    # アセット口座の取引のみ逆算（負債口座はhandに含まない）
+                    if acc and acc["type"] == "asset" and acc.get("class") == "current":
+                        if tx["type"] == "expense":
+                            start_balance += tx["amount"]
+                        elif tx["type"] == "income":
+                            start_balance -= tx["amount"]
 
         running = start_balance
         days = []
@@ -1041,10 +1062,13 @@ def get_calendar():
             actual_txs = tx_by_day.get(d, [])
             events = build_tx_events(actual_txs)
             for tx in actual_txs:
-                acc = get_account(data, tx.get("accountId"))
-                if acc and acc["type"] == "asset" and acc.get("class") == "current":
-                    amt = -tx["amount"] if tx["type"] == "expense" else tx["amount"]
-                    running += amt
+                if tx["type"] == "cc_detail":
+                    running -= tx["amount"]
+                else:
+                    acc = get_account(data, tx.get("accountId"))
+                    if acc and acc["type"] == "asset" and acc.get("class") == "current":
+                        amt = -tx["amount"] if tx["type"] == "expense" else tx["amount"]
+                        running += amt
             days.append({
                 "day": d, "events": events, "balance": running,
                 "isToday": False, "isPast": True,
@@ -1097,6 +1121,9 @@ def get_calendar():
                 # 未到着収入 → 残高に反映
                 if tx["id"] in pending_ids:
                     running += tx["amount"]
+                # CC明細 → 残高に反映（CC負債はhandに含まれないため明示的に減算）
+                elif tx["type"] == "cc_detail":
+                    running -= tx["amount"]
 
         # 未来日: スケジュールイベント
         is_future = (month_str > this_ym) or (month_str == this_ym and day_date > today)
