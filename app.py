@@ -751,17 +751,48 @@ def build_cashflow_events(data, month_key, offset, today):
                     "cc": True,   # 情報表示のみ。CC残高は開始残高に織込み済み
                     "liability_pay": False,
                 })
-    # 固定費（CC固定費も含めてすべて残高計算に影響する cc=False）
+    # CC引落（payDayがある流動負債）→ 残高計算に影響
+    for a in data["accounts"]:
+        if not is_cc_account(a):
+            continue
+        pay_day = a.get("payDay", 0)
+        if not pay_day:
+            continue
+        if offset == 0 and pay_day <= today.day:
+            continue
+        if offset == 0:
+            total = a["balance"]
+        else:
+            # 来月以降はCC固定費＋記録済みCC明細の合計を推計
+            cc_fc = sum(fc["amount"] for fc in data["fixedCosts"]
+                        if fc.get("accountId") == a["id"])
+            cc_det = sum(t["amount"] for t in data["transactions"]
+                         if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                         and t["date"].startswith(month_key))
+            total = cc_fc + cc_det
+        if total <= 0:
+            continue
+        events.append({
+            "day": pay_day,
+            "name": f"{a['name']}引落",
+            "amount": -total,
+            "type": "transfer",
+            "account": a["name"],
+            "cc": False, "liability_pay": False,
+        })
+
+    # 固定費（CC払いはcc=True情報のみ、直接払いは残高に影響）
     for fc in data["fixedCosts"]:
         day = fc["day"]
         if offset == 0 and day <= today.day:
             continue
         acc = get_account(data, fc.get("accountId"))
+        is_cc_fc = is_cc_account(acc)
         events.append({
             "day": day, "name": fc["name"],
             "amount": -fc["amount"], "type": "expense",
             "account": acc["name"] if acc else "",
-            "cc": False, "liability_pay": False,
+            "cc": is_cc_fc, "liability_pay": False,
         })
 
     # 定期収入
@@ -815,9 +846,8 @@ def get_cashflow():
                 "payFromAccount": pay_from["name"] if pay_from else "",
             })
 
-    # 経済的純額（資産 - CC残高）からスタート
-    cc_total = sum(a["balance"] for a in data["accounts"] if is_cc_account(a))
-    running = hand - cc_total
+    # 手持ちからスタート（CC引落は payDay に自動計上）
+    running = hand
     months = []
 
     for offset in range(3):
@@ -1096,9 +1126,8 @@ def get_calendar():
         })
 
     # ── 当月 or 未来月 ──
-    # 経済的純額（資産 - CC残高）からスタート
-    cc_total = sum(a["balance"] for a in data["accounts"] if is_cc_account(a))
-    running = hand - cc_total
+    # 手持ちからスタート（CC引落は payDay に自動計上）
+    running = hand
 
     # 未来月の場合: 今日〜対象月初の間のイベントを順算
     if month_str > this_ym:
@@ -1128,19 +1157,45 @@ def get_calendar():
         day_date = date(year, month, d)
         events = []
 
-        # 記録済み取引を表示
+        # 記録済み取引を表示（CC口座へのexpense取引は除外）
         actual_txs = tx_by_day.get(d, [])
         if actual_txs:
-            events = build_tx_events(actual_txs)
+            display_txs = [tx for tx in actual_txs
+                           if not (tx["type"] == "expense" and
+                                   is_cc_account(get_account(data, tx.get("accountId"))))]
+            events = build_tx_events(display_txs)
             for tx in actual_txs:
                 # 未到着収入 → 残高に反映
                 if tx["id"] in pending_ids:
                     running += tx["amount"]
-                # cc_detailは情報表示のみ。残高への影響なし（CC残高は開始残高に織込み済み）
 
         # 未来日: スケジュールイベント
         is_future = (month_str > this_ym) or (month_str == this_ym and day_date > today)
         if is_future:
+            # CC引落（payDay == d のCC口座）
+            for a in data["accounts"]:
+                if not is_cc_account(a):
+                    continue
+                if a.get("payDay") == d:
+                    if month_str == this_ym:
+                        total = max(0, a["balance"])
+                    else:
+                        cc_fc = sum(fc["amount"] for fc in data["fixedCosts"]
+                                    if fc.get("accountId") == a["id"])
+                        cc_det = sum(t["amount"] for t in data["transactions"]
+                                     if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                                     and t["date"].startswith(month_str))
+                        total = cc_fc + cc_det
+                    if total > 0:
+                        events.append({
+                            "name": f"{a['name']}引落",
+                            "amount": -total,
+                            "type": "transfer",
+                            "actual": False,
+                            "cc": False,
+                        })
+                        running -= total
+
             # 未来の負債口座取引（支払い予定など、CC以外）→ キャッシュアウト
             for tx in actual_txs:
                 if tx["id"] in pending_ids:
@@ -1150,14 +1205,17 @@ def get_calendar():
                     if tx["type"] == "expense":
                         running -= tx["amount"]
 
-            # 固定費（CC固定費も含めてすべて残高に影響）
+            # 固定費（CC払いは情報のみ、直接払いは残高に影響）
             for fc in data["fixedCosts"]:
                 if fc["day"] == d:
+                    acc = get_account(data, fc.get("accountId"))
+                    is_cc_fc = is_cc_account(acc)
                     events.append({
                         "name": fc["name"], "amount": -fc["amount"],
-                        "type": "expense", "actual": False, "cc": False,
+                        "type": "expense", "actual": False, "cc": is_cc_fc,
                     })
-                    running -= fc["amount"]
+                    if not is_cc_fc:
+                        running -= fc["amount"]
 
             # 定期収入
             for inc in data["incomeSchedule"]:
