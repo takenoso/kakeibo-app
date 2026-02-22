@@ -582,6 +582,22 @@ def is_cc_account(acc):
             and acc.get("class") == "current" and acc.get("payDay", 0) > 0)
 
 
+def get_cc_cycle_start(a, today):
+    """CC口座の現在の請求サイクル開始日を返す（前回引落日）"""
+    pay_day = a.get("payDay", 0)
+    if not pay_day:
+        return date(today.year, today.month, 1)
+    if today.day >= pay_day:
+        # 今月のpayDay以降 → サイクルは今月payDayから
+        return date(today.year, today.month, pay_day)
+    else:
+        # 今月payDay未満 → サイクルは先月payDayから
+        last_m = today.month - 1 if today.month > 1 else 12
+        last_y = today.year if today.month > 1 else today.year - 1
+        actual_day = min(pay_day, cal.monthrange(last_y, last_m)[1])
+        return date(last_y, last_m, actual_day)
+
+
 @app.route("/api/summary", methods=["GET"])
 def get_summary():
     data = load_data()
@@ -735,13 +751,15 @@ def build_cashflow_events(data, month_key, offset, today):
                     "cc": False,
                     "liability_pay": False,
                 })
-        # CC未仕訳雑費（CC残高 - cc_detail - 固定費 の差額）
+        # CC未仕訳雑費（CC残高 - 当サイクルのcc_detail - 固定費（経過分）の差額）
         for a in data["accounts"]:
             if not is_cc_account(a):
                 continue
+            cycle_start = get_cc_cycle_start(a, today).isoformat()
+            today_iso = today.isoformat()
             cc_det_sum = sum(t["amount"] for t in data["transactions"]
                              if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                             and t["date"].startswith(month_key))
+                             and cycle_start <= t["date"] <= today_iso)
             cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
                             if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
             unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
@@ -937,20 +955,26 @@ def get_pl():
         if not is_cc_account(a):
             continue
         if ym == today_ym:
-            # 当月: CC残高から算出（残高照合での管理にも対応）
+            # 当月: CC残高から算出、cc_detailは請求サイクル内のみ
             cc_base = a["balance"]
+            cycle_start = get_cc_cycle_start(a, today).isoformat()
+            cc_det_sum = sum(
+                t["amount"] for t in data["transactions"]
+                if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                and cycle_start <= t["date"] <= today.isoformat()
+            )
         else:
-            # 過去月: その月のexpense取引から算出
+            # 過去月: その月のexpense取引・cc_detailから算出
             cc_base = sum(
                 t["amount"] for t in data["transactions"]
                 if t["type"] == "expense" and t.get("accountId") == a["id"]
                 and t["date"].startswith(ym)
             )
-        cc_det_sum = sum(
-            t["amount"] for t in data["transactions"]
-            if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-            and t["date"].startswith(ym)
-        )
+            cc_det_sum = sum(
+                t["amount"] for t in data["transactions"]
+                if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
+                and t["date"].startswith(ym)
+            )
         fc_sum = pl_fc_by_acc.get(a["id"], 0)
         unsorted = cc_base - cc_det_sum - fc_sum
         if unsorted > 0:
@@ -1148,12 +1172,14 @@ def get_calendar():
 
         # CC未仕訳雑費（当月・今日に計上）
         if month_str == this_ym and d == today.day:
+            today_iso = today.isoformat()
             for a in data["accounts"]:
                 if not is_cc_account(a):
                     continue
+                cycle_start = get_cc_cycle_start(a, today).isoformat()
                 cc_det_sum = sum(t["amount"] for t in data["transactions"]
                                  if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                                 and t["date"].startswith(this_ym))
+                                 and cycle_start <= t["date"] <= today_iso)
                 cc_fc_sum = sum(fc["amount"] for fc in data["fixedCosts"]
                                 if fc.get("accountId") == a["id"] and fc["day"] <= today.day)
                 unjournaled = a["balance"] - cc_det_sum - cc_fc_sum
