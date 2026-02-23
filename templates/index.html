@@ -232,54 +232,8 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
     <button data-section="calendar">カレンダー</button>
     <button data-section="cashflow">キャッシュフロー</button>
     <button data-section="ledger">帳簿</button>
-    <button data-section="dashboard">ダッシュボード</button>
     <button data-section="settings">設定</button>
   </nav>
-
-  <!-- ═══ Dashboard ═══ -->
-  <div id="dashboard" class="section">
-    <div class="hero-card">
-      <div class="hero-label">あといくら使える</div>
-      <div class="big-number green" id="d-spendable" style="margin:8px 0 4px">--</div>
-      <div class="hero-sub" id="d-spendable-detail">今日の実残高 − 今後の固定費 − 記録済み未来支出 + 今後の定期収入</div>
-      <div class="progress-bar"><div class="progress-fill" id="d-progress" style="width:0%;background:var(--green)"></div></div>
-    </div>
-    <div class="grid-3" style="margin-bottom:12px">
-      <div class="stat-card">
-        <h3>今使える残高</h3>
-        <div class="value" style="color:var(--accent)" id="d-usable-net">--</div>
-      </div>
-      <div class="stat-card">
-        <h3>流動純資産</h3>
-        <div class="value" style="color:var(--text-dim)" id="d-current-net">--</div>
-      </div>
-      <div class="stat-card">
-        <h3>総純資産</h3>
-        <div class="value" style="color:var(--text)" id="d-networth">--</div>
-      </div>
-    </div>
-    <div class="grid-4" style="margin-bottom:12px">
-      <div class="stat-card"><h3>流動資産</h3><div class="value" style="color:var(--green);font-size:18px" id="d-c-assets">--</div></div>
-      <div class="stat-card"><h3>流動負債</h3><div class="value" style="color:var(--red);font-size:18px" id="d-c-liabilities">--</div></div>
-      <div class="stat-card"><h3>固定資産</h3><div class="value" style="color:var(--accent);font-size:18px" id="d-l-assets">--</div></div>
-      <div class="stat-card"><h3>固定負債</h3><div class="value" style="color:var(--orange);font-size:18px" id="d-l-liabilities">--</div></div>
-    </div>
-    <div class="grid-2" style="margin-bottom:16px">
-      <div class="stat-card"><h3>今月の支出</h3><div class="value" style="color:var(--red)" id="d-expenses">--</div></div>
-      <div class="stat-card"><h3>今月の収入</h3><div class="value" style="color:var(--green)" id="d-income">--</div></div>
-    </div>
-    <div class="card">
-      <h2>口座残高一覧</h2>
-      <div id="d-account-list"></div>
-    </div>
-    <div class="card">
-      <div class="section-header"><h2>残高照合（実残高チェック）</h2>
-        <button class="btn btn-small" onclick="toggleReconcile()">開く/閉じる</button>
-      </div>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">実際の残高を入力して、アプリの記録との差額を確認できます。差額があれば調整仕訳を作れます。</p>
-      <div id="reconcile-body" style="display:none"></div>
-    </div>
-  </div>
 
   <!-- ═══ Record ═══ -->
   <div id="record" class="section active">
@@ -425,19 +379,6 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
     </div>
     <div class="card"><h2>登録済みの固定費</h2><div id="fc-list"></div></div>
 
-    <!-- 定期収入 -->
-    <div class="card">
-      <h2>定期収入を追加</h2>
-      <div class="form-row-3">
-        <div class="form-group"><label>名前</label><input type="text" id="inc-name" placeholder="例: バイト代"></div>
-        <div class="form-group"><label>金額</label><input type="number" id="inc-amount" placeholder="0" inputmode="numeric"></div>
-        <div class="form-group"><label>入金日</label><input type="number" id="inc-day" placeholder="25" min="1" max="31" inputmode="numeric"></div>
-      </div>
-      <div class="form-group"><label>入金口座</label><select id="inc-account"></select></div>
-      <button class="btn btn-primary" onclick="addIncomeSchedule()">追加</button>
-    </div>
-    <div class="card"><h2>登録済みの定期収入</h2><div id="inc-list"></div></div>
-
     <!-- カテゴリ -->
     <div class="card">
       <h2>勘定科目（カテゴリ）管理</h2>
@@ -481,12 +422,11 @@ document.querySelectorAll('#main-nav button').forEach(btn=>{
     document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
     document.querySelectorAll('#main-nav button').forEach(b=>b.classList.remove('active'));
     document.getElementById(id).classList.add('active');btn.classList.add('active');
-    if(id==='dashboard')loadDashboard();
     if(id==='record'){loadRecent();populateSelects();}
     if(id==='calendar')loadCalendar();
     if(id==='cashflow')loadCashFlow();
     if(id==='ledger')loadLedger();
-    if(id==='settings'){loadAccounts();loadFixedCosts();loadIncomeSchedule();loadCatManager();loadTagManager();populateSelects();renderFcTagChips();}
+    if(id==='settings'){loadAccounts();loadFixedCosts();loadCatManager();loadTagManager();populateSelects();renderFcTagChips();}
   });
 });
 
@@ -515,7 +455,7 @@ async function loadCategories(){categories=await api('/api/categories')}
 async function loadTagsData(){allTags=await api('/api/tags')}
 
 function populateSelects(){
-  const sels=['rec-account','tr-from','tr-to','fc-account','inc-account','acc-payfrom'];
+  const sels=['rec-account','tr-from','tr-to','fc-account','acc-payfrom'];
   sels.forEach(id=>{const el=document.getElementById(id);if(!el)return;const p=el.value;
     el.innerHTML=allAccounts.map(a=>`<option value="${a.id}">${a.name}（${accClassLabel(a)}）</option>`).join('');
     if(p)el.value=p;});
@@ -579,114 +519,6 @@ function showDayDetail(day){
 function closeCalDetail(){document.getElementById('cal-detail-overlay')?.remove();}
 
 // ─── Dashboard ───
-async function loadDashboard(){
-  const[summary,accounts,cashflow]=await Promise.all([api('/api/summary'),api('/api/accounts'),api('/api/cashflow')]);
-  allAccounts=accounts;
-  // 来月末残高
-  const nm=cashflow.months&&cashflow.months[1]?cashflow.months[1]:cashflow.months&&cashflow.months[0];
-  const nmBal=nm?nm.endBalance:0;
-  const nmLabel=nm?nm.label:'来月';
-  const sp=document.getElementById('d-spendable');
-  sp.textContent=yen(nmBal);
-  sp.className='big-number '+(nmBal>=0?'green':'red');
-  document.getElementById('d-spendable-detail').textContent=`${nmLabel}末の残高予測`;
-  document.getElementById('d-usable-net').textContent=yen(summary.usableNet);
-  document.getElementById('d-current-net').textContent=yen(summary.currentNet);
-  document.getElementById('d-networth').textContent=yen(summary.netWorth);
-  document.getElementById('d-c-assets').textContent=yen(summary.currentAssets);
-  document.getElementById('d-c-liabilities').textContent=yen(summary.currentLiabilities);
-  document.getElementById('d-l-assets').textContent=yen(summary.longAssets);
-  document.getElementById('d-l-liabilities').textContent=yen(summary.longLiabilities);
-  document.getElementById('d-expenses').textContent=yen(summary.monthExpenses);
-  document.getElementById('d-income').textContent=yen(summary.monthIncome);
-  const total=summary.currentAssets;
-  if(total>0){const pct=Math.max(0,Math.min(100,(Math.max(0,nmBal)/total)*100));
-    const b=document.getElementById('d-progress');b.style.width=pct+'%';
-    b.style.background=pct<20?'var(--red)':pct<50?'var(--orange)':'var(--green)';}
-  document.getElementById('d-account-list').innerHTML=accounts.map(a=>{
-    const c=a.balance<0?'var(--red)':a.type==='liability'&&a.balance>0?'var(--red)':'var(--green)';
-    return`<div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div></div>
-    <div class="amount" style="color:${c}">${yen(a.balance)}</div></div>`;
-  }).join('');
-}
-
-// ─── Reconcile (残高照合) ───
-let reconcileOpen=false;
-function toggleReconcile(){
-  reconcileOpen=!reconcileOpen;
-  const el=document.getElementById('reconcile-body');
-  el.style.display=reconcileOpen?'':'none';
-  if(reconcileOpen)renderReconcile();
-}
-function renderReconcile(){
-  const el=document.getElementById('reconcile-body');
-  let h='<div style="margin-bottom:12px">';
-  allAccounts.forEach(a=>{
-    h+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:14px">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}" style="font-size:9px">${accClassLabel(a)}</span></div>
-        <div style="font-size:12px;color:var(--text-dim)">帳簿: <span style="color:${a.balance<0?'var(--red)':'var(--text)'}; font-weight:600">${yen(a.balance)}</span></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" id="rec-bal-${a.id}" placeholder="実残高" inputmode="numeric"
-          style="width:120px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none"
-          oninput="calcRecDiff(${a.id},${a.balance})">
-        <div id="rec-diff-${a.id}" style="width:120px;text-align:right;font-size:14px;font-weight:700;color:var(--text-muted)">--</div>
-      </div>
-    </div>`;
-  });
-  h+='</div>';
-  h+=`<div style="display:flex;gap:8px;align-items:center">
-    <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="calcAllRecDiff()">差額を計算</button>
-    <span style="font-size:12px;color:var(--text-dim)">差額がある口座は「残高修正」で帳簿を更新できます</span>
-  </div>`;
-  h+=`<div id="rec-summary" style="margin-top:12px"></div>`;
-  el.innerHTML=h;
-}
-function calcRecDiff(accId,bookBal){
-  const input=document.getElementById('rec-bal-'+accId);
-  const diffEl=document.getElementById('rec-diff-'+accId);
-  const v=input.value;
-  if(v===''){diffEl.textContent='--';diffEl.style.color='var(--text-muted)';return;}
-  const actual=parseInt(v,10);
-  const diff=actual-bookBal;
-  if(diff===0){diffEl.textContent='一致';diffEl.style.color='var(--green)';}
-  else{diffEl.textContent=(diff>0?'+':'')+yen(diff);diffEl.style.color=diff>0?'var(--green)':'var(--red)';}
-}
-function calcAllRecDiff(){
-  let diffs=[];
-  allAccounts.forEach(a=>{
-    const input=document.getElementById('rec-bal-'+a.id);
-    if(!input||input.value==='')return;
-    calcRecDiff(a.id,a.balance);
-    const actual=parseInt(input.value,10);
-    const diff=actual-a.balance;
-    if(diff!==0)diffs.push({account:a,diff,actual});
-  });
-  const sumEl=document.getElementById('rec-summary');
-  if(!diffs.length){sumEl.innerHTML='<p style="color:var(--green);font-size:13px;padding:8px 0">全口座一致しています</p>';return;}
-  let h='<div style="margin-top:8px">';
-  h+='<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:8px">差額がある口座:</div>';
-  diffs.forEach(d=>{
-    const c=d.diff>0?'var(--green)':'var(--red)';
-    h+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">
-      <div><span style="font-weight:600">${escHtml(d.account.name)}</span>
-        <span style="font-size:12px;color:var(--text-dim);margin-left:8px">帳簿${yen(d.account.balance)} → 実残${yen(d.actual)}</span></div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="color:${c};font-weight:700">${d.diff>0?'+':''}${yen(d.diff)}</span>
-        <button class="btn btn-small" onclick="applyRecAdj(${d.account.id},${d.actual})" style="font-size:11px">残高修正</button>
-      </div></div>`;
-  });
-  h+='</div>';
-  sumEl.innerHTML=h;
-}
-async function applyRecAdj(accId,newBal){
-  if(!confirm('帳簿残高を実残高に修正しますか？'))return;
-  await putJson('/api/accounts/'+accId,{balance:newBal});
-  await refreshAccounts();loadDashboard();
-  if(reconcileOpen)renderReconcile();
-}
-
 // ─── Record ───
 function setTxType(t){txType=t;
   document.getElementById('tb-expense').className=t==='expense'?'sel-expense':'';
@@ -1131,52 +963,6 @@ async function saveEditFC(id){
   editingFcId=null;editingFcTags={};loadFixedCosts();
 }
 async function deleteFC(id){if(!confirm('削除？'))return;await api('/api/fixed-costs/'+id,{method:'DELETE'});loadFixedCosts();}
-
-// ─── Settings: Income Schedule ───
-let editingIncId=null;
-async function addIncomeSchedule(){
-  const n=document.getElementById('inc-name').value,a=document.getElementById('inc-amount').value,d=document.getElementById('inc-day').value,ac=document.getElementById('inc-account').value;
-  if(!n||!a||!d){alert('すべて入力');return;}
-  await postJson('/api/income-schedule',{name:n,amount:+a,day:+d,accountId:+ac});
-  document.getElementById('inc-name').value='';document.getElementById('inc-amount').value='';document.getElementById('inc-day').value='';loadIncomeSchedule();}
-
-async function loadIncomeSchedule(){
-  const incs=await api('/api/income-schedule');const el=document.getElementById('inc-list');
-  if(!incs.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">定期収入なし</p>';return;}
-  el.innerHTML=incs.map(i=>{
-    let row=`<div class="list-item"><div class="info"><div class="name">${escHtml(i.name)}</div>
-      <div class="sub">毎月${i.day}日 / ${accName(i.accountId)}</div></div>
-      <div class="amount income">+${yen(i.amount)}</div>
-      <div class="actions"><button class="btn btn-edit" onclick="showEditInc(${i.id})">編集</button><button class="btn btn-danger" onclick="deleteInc(${i.id})">削除</button></div></div>`;
-    if(editingIncId===i.id){
-      row+=`<div class="edit-form" id="inc-edit-${i.id}">
-        <div class="form-row-3" style="margin-bottom:10px">
-          <div class="form-group"><label>名前</label><input type="text" id="ince-name-${i.id}" value="${escHtml(i.name)}"></div>
-          <div class="form-group"><label>金額</label><input type="number" id="ince-amount-${i.id}" value="${i.amount}" inputmode="numeric"></div>
-          <div class="form-group"><label>入金日</label><input type="number" id="ince-day-${i.id}" value="${i.day}" min="1" max="31" inputmode="numeric"></div>
-        </div>
-        <div class="form-group" style="margin-bottom:10px"><label>入金口座</label><select id="ince-acc-${i.id}">${allAccounts.map(a=>`<option value="${a.id}"${a.id===i.accountId?' selected':''}>${a.name}</option>`).join('')}</select></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" style="width:auto;padding:8px 24px" onclick="saveEditInc(${i.id})">保存</button>
-          <button class="btn btn-ghost" onclick="cancelEditInc()">キャンセル</button>
-        </div>
-      </div>`;
-    }
-    return row;
-  }).join('');
-}
-function showEditInc(id){editingIncId=id;loadIncomeSchedule();}
-function cancelEditInc(){editingIncId=null;loadIncomeSchedule();}
-async function saveEditInc(id){
-  const n=document.getElementById('ince-name-'+id).value;
-  const a=document.getElementById('ince-amount-'+id).value;
-  const d=document.getElementById('ince-day-'+id).value;
-  const ac=document.getElementById('ince-acc-'+id).value;
-  if(!n||!a||!d){alert('すべて入力');return;}
-  await putJson('/api/income-schedule/'+id,{name:n,amount:+a,day:+d,accountId:+ac});
-  editingIncId=null;loadIncomeSchedule();
-}
-async function deleteInc(id){if(!confirm('削除？'))return;await api('/api/income-schedule/'+id,{method:'DELETE'});loadIncomeSchedule();}
 
 // ─── Settings: Category Manager ───
 async function loadCatManager(){
