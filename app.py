@@ -1107,6 +1107,13 @@ def get_calendar():
 
 
 if __name__ == "__main__":
+    import socket
+    hostname = socket.gethostname()
+    try:
+        local_ip = socket.gethostbyname(hostname)
+    except Exception:
+        local_ip = "（IPアドレス取得失敗）"
     print("家計簿アプリを起動中...")
-    print("ブラウザで http://localhost:8080 を開いてください")
-    app.run(debug=True, port=8080)
+    print(f"PC:     http://localhost:8080")
+    print(f"スマホ: http://{local_ip}:8080  ※同じWiFiに接続してください")
+    app.run(debug=True, host="0.0.0.0", port=8080)
