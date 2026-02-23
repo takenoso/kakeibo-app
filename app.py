@@ -207,6 +207,16 @@ def update_account(acc_id):
     return jsonify(acc)
 
 
+@app.route("/api/accounts/reorder", methods=["POST"])
+def reorder_accounts():
+    data = load_data()
+    ids = request.get_json().get("ids", [])
+    acc_map = {a["id"]: a for a in data["accounts"]}
+    data["accounts"] = [acc_map[i] for i in ids if i in acc_map]
+    save_data(data)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/accounts/<int:acc_id>", methods=["DELETE"])
 def delete_account(acc_id):
     data = load_data()

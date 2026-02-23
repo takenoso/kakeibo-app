@@ -999,14 +999,24 @@ async function addAccount(){
 async function loadAccounts(){
   await refreshAccounts();const el=document.getElementById('acc-list');
   if(!allAccounts.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">口座なし</p>';return;}
-  el.innerHTML=allAccounts.map(a=>{
+  el.innerHTML=allAccounts.map((a,idx)=>{
     let extra='';if(a.type==='liability'&&a.class==='current'&&a.payDay)extra=` / ${a.payDay}日引落`;
+    const isFirst=idx===0,isLast=idx===allAccounts.length-1;
     return`<div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div>
       <div class="sub">${accClassLabel(a)}${extra}</div></div>
       <div class="amount" style="color:${a.balance<0?'var(--red)':'var(--text)'}">${yen(a.balance)}</div>
       <div class="actions">
+        <button class="btn btn-small" onclick="moveAcc(${a.id},-1)" ${isFirst?'disabled':''} style="padding:6px 10px;font-size:13px;opacity:${isFirst?0.3:1}">▲</button>
+        <button class="btn btn-small" onclick="moveAcc(${a.id},1)" ${isLast?'disabled':''} style="padding:6px 10px;font-size:13px;opacity:${isLast?0.3:1}">▼</button>
         <button class="btn btn-edit" onclick="editAccBal(${a.id},${a.balance})">残高修正</button>
         <button class="btn btn-danger" onclick="deleteAcc(${a.id})">削除</button></div></div>`;}).join('');
+}
+async function moveAcc(id,dir){
+  const idx=allAccounts.findIndex(a=>a.id===id);if(idx===-1)return;
+  const ni=idx+dir;if(ni<0||ni>=allAccounts.length)return;
+  [allAccounts[idx],allAccounts[ni]]=[allAccounts[ni],allAccounts[idx]];
+  await postJson('/api/accounts/reorder',{ids:allAccounts.map(a=>a.id)});
+  loadAccounts();
 }
 async function editAccBal(id,cur){const v=prompt('新しい残高',cur);if(v===null)return;
   await putJson('/api/accounts/'+id,{balance:+v});
