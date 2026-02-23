@@ -345,14 +345,6 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
 
   <!-- ═══ Ledger ═══ -->
   <div id="ledger" class="section">
-    <div class="card"><div class="fs">
-      <div class="fs-header">損益計算書 (P/L)<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
-      <div id="pl-body"></div>
-    </div></div>
-    <div class="card"><div class="fs">
-      <div class="fs-header">貸借対照表 (B/S)</div>
-      <div id="bs-body" style="margin-top:12px"></div>
-    </div></div>
     <div class="card">
       <h2>月別支出内訳</h2>
       <div class="filter-row">
@@ -365,6 +357,14 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
       <div id="chart-total" style="font-size:20px;font-weight:800;color:var(--red);text-align:center;margin:8px 0;font-variant-numeric:tabular-nums"></div>
       <div id="chart"></div>
     </div>
+    <div class="card"><div class="fs">
+      <div class="fs-header">損益計算書 (P/L)<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
+      <div id="pl-body"></div>
+    </div></div>
+    <div class="card"><div class="fs">
+      <div class="fs-header">貸借対照表 (B/S)</div>
+      <div id="bs-body" style="margin-top:12px"></div>
+    </div></div>
     <div class="card">
       <h2>仕訳帳</h2>
       <div class="filter-row">
@@ -472,6 +472,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
 const API='';
 let txType='expense', allTx=[], allAccounts=[], allFixedCosts=[], categories={expense:[],income:[]}, allTags=[], selectedTags=[], selectedFcTags=[], editingTxId=null, editingFcTags={};
 let calEventStore=[];
+let calDayStore={};
 
 // ─── Nav ───
 document.querySelectorAll('#main-nav button').forEach(btn=>{
@@ -550,21 +551,30 @@ function toggleEditFcTag(fcId,tag){
   if(container)container.innerHTML=allTags.map(tg=>`<span class="tag-chip ${arr.includes(tg)?'selected':''}" onclick="toggleEditFcTag(${fcId},'${escHtml(tg)}')">${escHtml(tg)}</span>`).join('');
 }
 
-// ─── Calendar Event Detail Modal ───
-function showCalEventDetail(storeIdx){
-  const item=calEventStore[storeIdx];if(!item)return;
-  const e=item.event,day=item.day;
-  const amtColor=e.amount>=0?'var(--green)':'var(--red)';
-  const typeLabel={expense:'支出',income:'収入',transfer:'振替',cc_detail:'CC明細'}[e.type]||e.type;
-  const statusLabel=e.actual?'記録済み':(e.cc?'CC計上済み予定':'予定');
-  const prefix=e.amount>0?'+':'';
-  let rows=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim);font-size:13px">日付</span><span>${day}日</span></div>`;
-  rows+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim);font-size:13px">種別</span><span>${typeLabel} / ${statusLabel}</span></div>`;
-  rows+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim);font-size:13px">金額</span><span style="font-weight:700;font-size:18px;color:${amtColor}">${prefix}${yen(e.amount)}</span></div>`;
-  if(e.account)rows+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim);font-size:13px">口座</span><span>${escHtml(e.account)}</span></div>`;
-  if(e.cc)rows+=`<div style="padding:8px 0;font-size:12px;color:var(--text-muted)">※ CC引落はキャッシュフロー計算に含まれます（P/Lには計上しません）</div>`;
+// ─── Calendar Day Detail Modal ───
+function showDayDetail(day){
+  const d=calDayStore[day];if(!d||!d.events.length)return;
+  const typeLabel={expense:'支出',income:'収入',transfer:'振替',cc_detail:'CC明細'};
+  let rows='';
+  d.events.forEach(e=>{
+    const amtColor=e.amount>=0?'var(--green)':'var(--red)';
+    const prefix=e.amount>0?'+':'';
+    const ccMark=e.cc?' [CC]':'';
+    const statusMark=e.actual?'':e.cc?'（CC予定）':'（予定）';
+    const tl=typeLabel[e.type]||e.type;
+    rows+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div><div style="font-weight:600;font-size:13px">${escHtml(e.name)}${ccMark}<span style="font-size:11px;color:var(--text-muted);margin-left:4px">${statusMark}</span></div>
+      <div style="font-size:11px;color:var(--text-dim)">${tl}${e.account?' / '+escHtml(e.account):''}</div></div>
+      <div style="font-weight:700;color:${amtColor};white-space:nowrap;margin-left:12px">${prefix}${yen(e.amount)}</div></div>`;
+  });
+  const totInc=d.events.filter(e=>e.amount>0&&!e.cc).reduce((s,e)=>s+e.amount,0);
+  const totExp=d.events.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0);
+  let summary='';
+  if(totInc)summary+=`<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--text-dim);font-size:12px">収入計</span><span style="color:var(--green);font-weight:700">+${yen(totInc)}</span></div>`;
+  if(totExp)summary+=`<div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--text-dim);font-size:12px">支出計</span><span style="color:var(--red);font-weight:700">${yen(totExp)}</span></div>`;
+  if(d.balance!=null)summary+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--border);margin-top:4px"><span style="color:var(--text-dim);font-size:12px">この日の残高</span><span style="color:${d.balance>=0?'var(--green)':'var(--red)'};font-weight:700">${yen(d.balance)}</span></div>`;
   document.getElementById('cal-detail-overlay')?.remove();
-  document.body.insertAdjacentHTML('beforeend',`<div class="rj-overlay" id="cal-detail-overlay" onclick="if(event.target===this)closeCalDetail()"><div class="rj-modal" style="max-width:380px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0;font-size:16px">${escHtml(e.name)}</h3><button class="btn btn-ghost" onclick="closeCalDetail()" style="padding:4px 12px;font-size:13px">✕</button></div>${rows}</div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="rj-overlay" id="cal-detail-overlay" onclick="if(event.target===this)closeCalDetail()"><div class="rj-modal" style="max-width:400px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0;font-size:16px">${day}日の収支</h3><button class="btn btn-ghost" onclick="closeCalDetail()" style="padding:4px 12px;font-size:13px">✕</button></div>${rows}<div style="margin-top:12px;background:var(--surface2);border-radius:10px;padding:10px 14px">${summary}</div></div></div>`);
 }
 function closeCalDetail(){document.getElementById('cal-detail-overlay')?.remove();}
 
@@ -847,6 +857,7 @@ async function loadCalendar(m){
   const data=await api('/api/calendar?month='+calMonth);
   const dows=['日','月','火','水','木','金','土'];
   calEventStore=[];
+  calDayStore={};
   let html='';
 
   // ナビ
@@ -880,7 +891,9 @@ async function loadCalendar(m){
     if(dow===0)cls+=' sun';
     if(dow===6)cls+=' sat';
 
-    html+=`<div class="${cls}">`;
+    calDayStore[d.day]={events:d.events,balance:d.balance,isToday:d.isToday};
+    const hasTap=d.events.length>0;
+    html+=`<div class="${cls}"${hasTap?' style="cursor:pointer" onclick="showDayDetail('+d.day+')"':''}>`;
     html+=`<div class="cal-day-num">${d.day}</div>`;
     html+='<div class="cal-events">';
     d.events.forEach(e=>{
@@ -888,9 +901,7 @@ async function loadCalendar(m){
       const sc=e.actual?'':(e.cc?'cc-charge':'scheduled');
       const prefix=e.amount>0?'+':'';
       const ccLabel=e.cc?' [CC]':'';
-      const storeIdx=calEventStore.length;
-      calEventStore.push({day:d.day,event:e});
-      html+=`<div class="cal-evt ${tc} ${sc}" style="cursor:pointer" onclick="showCalEventDetail(${storeIdx})" title="${escHtml(e.name)}${ccLabel}: ${prefix}${yen(e.amount)}">${escHtml(e.name)}${ccLabel} ${prefix}${yen(e.amount)}</div>`;
+      html+=`<div class="cal-evt ${tc} ${sc}" title="${escHtml(e.name)}${ccLabel}: ${prefix}${yen(e.amount)}">${escHtml(e.name)}${ccLabel} ${prefix}${yen(e.amount)}</div>`;
     });
     html+='</div>';
 

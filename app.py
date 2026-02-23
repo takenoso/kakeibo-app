@@ -922,10 +922,10 @@ def get_pl():
             expense_detail.setdefault(cat, {}).setdefault(tag_key, {})
             expense_detail[cat][tag_key][sch_key] = expense_detail[cat][tag_key].get(sch_key, 0) + t["amount"]
         elif t["type"] == "expense":
-            # 負債口座（CC）への支出はcc_detailで管理するためP/L除外
+            # CC口座への支出はcc_detailで管理するためP/L除外、支払い予定など非CC負債は計上
             acc = get_account(data, t.get("accountId"))
-            if acc and acc["type"] == "liability":
-                pass  # スキップ
+            if acc and is_cc_account(acc):
+                pass  # CCはスキップ
             else:
                 expenses_by_cat[cat] = expenses_by_cat.get(cat, 0) + t["amount"]
                 expense_detail.setdefault(cat, {}).setdefault(tag_key, {})
