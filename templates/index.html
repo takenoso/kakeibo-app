@@ -996,20 +996,69 @@ async function addAccount(){
   document.getElementById('acc-name').value='';document.getElementById('acc-balance').value='';
   await refreshAccounts();loadAccounts();populateSelects();
 }
+let editingAccId=null;
 async function loadAccounts(){
   await refreshAccounts();const el=document.getElementById('acc-list');
   if(!allAccounts.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">口座なし</p>';return;}
-  el.innerHTML=allAccounts.map((a,idx)=>{
+  let h='';
+  allAccounts.forEach((a,idx)=>{
     let extra='';if(a.type==='liability'&&a.class==='current'&&a.payDay)extra=` / ${a.payDay}日引落`;
     const isFirst=idx===0,isLast=idx===allAccounts.length-1;
-    return`<div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div>
+    h+=`<div class="list-item"><div class="info"><div class="name">${escHtml(a.name)} <span class="acc-badge ${accBadgeClass(a)}">${accClassLabel(a)}</span></div>
       <div class="sub">${accClassLabel(a)}${extra}</div></div>
       <div class="amount" style="color:${a.balance<0?'var(--red)':'var(--text)'}">${yen(a.balance)}</div>
       <div class="actions">
         <button class="btn btn-small" onclick="moveAcc(${a.id},-1)" ${isFirst?'disabled':''} style="padding:6px 10px;font-size:13px;opacity:${isFirst?0.3:1}">▲</button>
         <button class="btn btn-small" onclick="moveAcc(${a.id},1)" ${isLast?'disabled':''} style="padding:6px 10px;font-size:13px;opacity:${isLast?0.3:1}">▼</button>
-        <button class="btn btn-edit" onclick="editAccBal(${a.id},${a.balance})">残高修正</button>
-        <button class="btn btn-danger" onclick="deleteAcc(${a.id})">削除</button></div></div>`;}).join('');
+        <button class="btn btn-edit" onclick="showEditAcc(${a.id})">編集</button>
+        <button class="btn btn-danger" onclick="deleteAcc(${a.id})">削除</button></div></div>`;
+    if(editingAccId===a.id){
+      const ct=a.class+'-'+a.type;
+      const isCurrentLiab=a.type==='liability'&&a.class==='current';
+      const payFromOpts=allAccounts.filter(x=>x.id!==a.id).map(x=>`<option value="${x.id}" ${a.payFromAccountId===x.id?'selected':''}>${escHtml(x.name)}</option>`).join('');
+      h+=`<div class="edit-form" id="acc-edit-${a.id}" style="padding:14px 0 4px">
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="margin:0"><label>口座名</label><input type="text" id="ae-name-${a.id}" value="${escHtml(a.name)}"></div>
+          <div class="form-group" style="margin:0"><label>分類</label><select id="ae-type-${a.id}" onchange="toggleAccEditFields(${a.id})">
+            <option value="current-asset" ${ct==='current-asset'?'selected':''}>流動資産</option>
+            <option value="current-liability" ${ct==='current-liability'?'selected':''}>流動負債</option>
+            <option value="long-asset" ${ct==='long-asset'?'selected':''}>固定資産</option>
+            <option value="long-liability" ${ct==='long-liability'?'selected':''}>固定負債</option>
+          </select></div>
+          <div class="form-group" style="margin:0"><label>残高</label><input type="number" id="ae-bal-${a.id}" value="${a.balance}" inputmode="numeric"></div>
+        </div>
+        <div id="ae-liab-${a.id}" style="display:${isCurrentLiab?'':'none'}">
+          <div class="form-row" style="margin-bottom:10px">
+            <div class="form-group" style="margin:0"><label>引落日（毎月○日）</label><input type="number" id="ae-payday-${a.id}" value="${a.payDay||''}" placeholder="27" min="1" max="31" inputmode="numeric"></div>
+            <div class="form-group" style="margin:0"><label>引落元口座</label><select id="ae-payfrom-${a.id}">${payFromOpts}</select></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="width:auto;padding:9px 20px" onclick="saveEditAcc(${a.id})">保存</button>
+          <button class="btn btn-ghost" onclick="editingAccId=null;loadAccounts()">キャンセル</button>
+        </div></div>`;
+    }
+  });
+  el.innerHTML=h;
+}
+function showEditAcc(id){editingAccId=(editingAccId===id?null:id);loadAccounts();}
+function toggleAccEditFields(id){
+  const val=document.getElementById('ae-type-'+id).value;
+  document.getElementById('ae-liab-'+id).style.display=val==='current-liability'?'':'none';
+}
+async function saveEditAcc(id){
+  const n=document.getElementById('ae-name-'+id).value;
+  const ct=document.getElementById('ae-type-'+id).value;
+  const b=document.getElementById('ae-bal-'+id).value;
+  if(!n){alert('口座名を入力');return;}
+  const[cls,type]=ct.split('-');
+  const body={name:n,type,class:cls,balance:+b};
+  if(ct==='current-liability'){
+    body.payDay=+(document.getElementById('ae-payday-'+id).value||0);
+    body.payFromAccountId=+(document.getElementById('ae-payfrom-'+id).value||0);
+  }
+  await putJson('/api/accounts/'+id,body);
+  editingAccId=null;await refreshAccounts();loadAccounts();populateSelects();
 }
 async function moveAcc(id,dir){
   const idx=allAccounts.findIndex(a=>a.id===id);if(idx===-1)return;
@@ -1018,11 +1067,8 @@ async function moveAcc(id,dir){
   await postJson('/api/accounts/reorder',{ids:allAccounts.map(a=>a.id)});
   loadAccounts();
 }
-async function editAccBal(id,cur){const v=prompt('新しい残高',cur);if(v===null)return;
-  await putJson('/api/accounts/'+id,{balance:+v});
-  await refreshAccounts();loadAccounts();}
 async function deleteAcc(id){if(!confirm('削除しますか？'))return;const r=await fetch(API+'/api/accounts/'+id,{method:'DELETE'});const d=await r.json();if(d.error){alert(d.error);return;}
-  await refreshAccounts();loadAccounts();populateSelects();}
+  editingAccId=null;await refreshAccounts();loadAccounts();populateSelects();}
 
 // ─── Settings: Fixed Costs ───
 let editingFcId=null;
