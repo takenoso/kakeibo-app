@@ -3,9 +3,10 @@
 
 import json
 import os
+import shutil
 import calendar as cal
 from datetime import date, timedelta
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_file
 
 app = Flask(__name__)
 
@@ -96,6 +97,16 @@ def migrate_data(data):
 
 
 def save_data(data):
+    # ローテーションバックアップ（bak1→bak2→bak3 の3世代保持）
+    if os.path.exists(DATA_FILE):
+        bak1 = DATA_FILE + ".bak1"
+        bak2 = DATA_FILE + ".bak2"
+        bak3 = DATA_FILE + ".bak3"
+        if os.path.exists(bak2):
+            shutil.copy2(bak2, bak3)
+        if os.path.exists(bak1):
+            shutil.copy2(bak1, bak2)
+        shutil.copy2(DATA_FILE, bak1)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -471,49 +482,12 @@ def delete_fixed_cost(fc_id):
 
 # ─── Income Schedule ───
 
-@app.route("/api/income-schedule", methods=["GET"])
-def get_income_schedule():
-    data = load_data()
-    return jsonify(data["incomeSchedule"])
+# ─── Backup ───
 
-
-@app.route("/api/income-schedule", methods=["POST"])
-def add_income_schedule():
-    data = load_data()
-    body = request.get_json()
-    inc = {
-        "id": next_id(data["incomeSchedule"]),
-        "name": body["name"],
-        "amount": int(body["amount"]),
-        "day": int(body["day"]),
-        "accountId": int(body.get("accountId", data["accounts"][0]["id"])),
-    }
-    data["incomeSchedule"].append(inc)
-    save_data(data)
-    return jsonify(inc), 201
-
-
-@app.route("/api/income-schedule/<int:inc_id>", methods=["PUT"])
-def update_income_schedule(inc_id):
-    data = load_data()
-    inc = next((i for i in data["incomeSchedule"] if i["id"] == inc_id), None)
-    if not inc:
-        return jsonify({"error": "not found"}), 404
-    body = request.get_json()
-    inc["name"] = body.get("name", inc["name"])
-    inc["amount"] = int(body.get("amount", inc["amount"]))
-    inc["day"] = int(body.get("day", inc["day"]))
-    inc["accountId"] = int(body.get("accountId", inc.get("accountId", 1)))
-    save_data(data)
-    return jsonify(inc)
-
-
-@app.route("/api/income-schedule/<int:inc_id>", methods=["DELETE"])
-def delete_income_schedule(inc_id):
-    data = load_data()
-    data["incomeSchedule"] = [i for i in data["incomeSchedule"] if i["id"] != inc_id]
-    save_data(data)
-    return jsonify({"ok": True})
+@app.route("/api/data", methods=["GET"])
+def download_data():
+    return send_file(DATA_FILE, as_attachment=True,
+                     download_name="kakeibo_backup.json", mimetype="application/json")
 
 
 # ─── Categories ───
@@ -606,94 +580,6 @@ def get_cc_cycle_start(a, today):
         last_y = today.year if today.month > 1 else today.year - 1
         actual_day = min(pay_day, cal.monthrange(last_y, last_m)[1])
         return date(last_y, last_m, actual_day)
-
-
-@app.route("/api/summary", methods=["GET"])
-def get_summary():
-    data = load_data()
-    today = date.today()
-    ym = f"{today.year}-{today.month:02d}"
-    today_iso = today.isoformat()
-
-    current_assets = sum(a["balance"] for a in data["accounts"]
-                         if a["type"] == "asset" and a.get("class") == "current")
-    current_liabilities = sum(a["balance"] for a in data["accounts"]
-                              if a["type"] == "liability" and a.get("class") == "current")
-    long_assets = sum(a["balance"] for a in data["accounts"]
-                      if a["type"] == "asset" and a.get("class") == "long")
-    long_liabilities = sum(a["balance"] for a in data["accounts"]
-                           if a["type"] == "liability" and a.get("class") == "long")
-
-    total_assets = current_assets + long_assets
-    total_liabilities = current_liabilities + long_liabilities
-    net_worth = total_assets - total_liabilities
-    current_net = current_assets - current_liabilities
-
-    # 今持ってるお金 = 流動資産 − 未到着収入
-    pending_income, _ = calc_pending_income(data)
-    hand = current_assets - pending_income
-
-    # CC引落（payDayがある流動負債）とその他負債を分離
-    cc_total = 0
-    cc_list = []
-    other_liabilities = 0
-    for a in data["accounts"]:
-        if a["type"] == "liability" and a.get("class") == "current":
-            if is_cc_account(a) and a["balance"] > 0:
-                cc_total += a["balance"]
-                cc_list.append({
-                    "name": a["name"], "balance": a["balance"],
-                    "payDay": a["payDay"],
-                })
-            else:
-                other_liabilities += max(0, a["balance"])
-
-    # 今月の支出・収入
-    month_expenses = sum(
-        t["amount"] for t in data["transactions"]
-        if t["type"] in ("expense", "cc_detail") and t["date"].startswith(ym)
-    )
-    month_income = sum(
-        t["amount"] for t in data["transactions"]
-        if t["type"] == "income" and t["date"].startswith(ym)
-    )
-
-    # 残りの固定費（アセット口座のみ、CC払い固定費は除外）
-    remaining_fixed = 0
-    for fc in data["fixedCosts"]:
-        if fc["day"] > today.day:
-            acc = get_account(data, fc.get("accountId"))
-            if acc and acc["type"] == "asset":
-                remaining_fixed += fc["amount"]
-    remaining_income = sum(inc["amount"] for inc in data["incomeSchedule"]
-                           if inc["day"] > today.day)
-
-    # 今使える残高 = 持ってるお金 − CC引落 − その他負債
-    usable_net = hand - cc_total - other_liabilities
-    # あといくら使える = 今使える残高 − 固定費 + 定期収入
-    spendable = usable_net - remaining_fixed + remaining_income
-
-    return jsonify({
-        "hand": hand,
-        "usableNet": usable_net,
-        "ccTotal": cc_total,
-        "ccList": cc_list,
-        "otherLiabilities": other_liabilities,
-        "pendingIncome": pending_income,
-        "currentAssets": current_assets,
-        "currentLiabilities": current_liabilities,
-        "longAssets": long_assets,
-        "longLiabilities": long_liabilities,
-        "totalAssets": total_assets,
-        "totalLiabilities": total_liabilities,
-        "netWorth": net_worth,
-        "currentNet": current_net,
-        "monthExpenses": month_expenses,
-        "monthIncome": month_income,
-        "remainingFixed": remaining_fixed,
-        "remainingIncome": remaining_income,
-        "spendable": spendable,
-    })
 
 
 # ─── Cash Flow ───
@@ -1013,38 +899,6 @@ def get_pl():
         "totalExpenses": total_expenses,
         "netIncome": total_income - total_expenses,
         "ccUnsorted": cc_unsorted,
-    })
-
-
-# ─── B/S ───
-
-@app.route("/api/bs", methods=["GET"])
-def get_bs():
-    data = load_data()
-    current_assets = [{"name": a["name"], "balance": a["balance"]} for a in data["accounts"] if a["type"] == "asset" and a.get("class") == "current"]
-    long_assets = [{"name": a["name"], "balance": a["balance"]} for a in data["accounts"] if a["type"] == "asset" and a.get("class") == "long"]
-    current_liabilities = [{"name": a["name"], "balance": a["balance"]} for a in data["accounts"] if a["type"] == "liability" and a.get("class") == "current"]
-    long_liabilities = [{"name": a["name"], "balance": a["balance"]} for a in data["accounts"] if a["type"] == "liability" and a.get("class") == "long"]
-
-    total_ca = sum(a["balance"] for a in current_assets)
-    total_la = sum(a["balance"] for a in long_assets)
-    total_cl = sum(a["balance"] for a in current_liabilities)
-    total_ll = sum(a["balance"] for a in long_liabilities)
-    total_assets = total_ca + total_la
-    total_liabilities = total_cl + total_ll
-
-    return jsonify({
-        "currentAssets": current_assets,
-        "longAssets": long_assets,
-        "currentLiabilities": current_liabilities,
-        "longLiabilities": long_liabilities,
-        "totalCurrentAssets": total_ca,
-        "totalLongAssets": total_la,
-        "totalCurrentLiabilities": total_cl,
-        "totalLongLiabilities": total_ll,
-        "totalAssets": total_assets,
-        "totalLiabilities": total_liabilities,
-        "netWorth": total_assets - total_liabilities,
     })
 
 

@@ -213,15 +213,53 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
 .cal-end-summary .val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
 
 @media(max-width:600px){
-  .cal-cell{min-height:70px;padding:4px}
+  /* レイアウト */
+  .app{padding:8px 10px 88px}
+  .card{padding:14px;border-radius:12px}
+
+  /* グリッド・フォーム */
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .form-row,.form-row-3,.form-row-4{grid-template-columns:1fr}
+  /* iOS zoom防止: input/selectは16px以上 */
+  .form-group input,.form-group select,
+  .tag-add-row input,.filter-row select,.filter-row input{font-size:16px!important}
+
+  /* テキスト */
+  .big-number{font-size:26px}
+  .stat-card .value{font-size:18px}
+  .fs-header{font-size:15px;padding:10px 0}
+
+  /* Nav */
+  nav{padding:3px}
+  nav button{font-size:11px;padding:8px 3px}
+
+  /* カレンダー */
+  .cal-cell{min-height:64px;padding:3px}
   .cal-evt{font-size:8px}
   .cal-balance{font-size:9px}
   .cal-day-num{font-size:11px}
-  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.form-row,.form-row-3,.form-row-4{grid-template-columns:1fr}
-  .big-number{font-size:28px}nav button{font-size:11px;padding:8px 4px}
-  .bs-grid{grid-template-columns:1fr}.bs-col:first-child{border-right:none;border-bottom:1px solid var(--border)}
+
+  /* キャッシュフロー */
+  .cf-event{padding:9px 12px;font-size:13px}
   .cf-event .cf-running{display:none}
-  .stat-card .value{font-size:18px}
+  .cf-event .cf-date{width:34px;font-size:12px}
+  .cf-event .cf-amt{width:76px;font-size:13px}
+  .cf-month-header{padding:11px 14px;font-size:13px}
+  .cf-footer{padding:10px 14px;font-size:13px}
+  .cf-summary{padding:14px}
+
+  /* リスト・アクションボタン */
+  .list-item{flex-wrap:wrap;gap:6px}
+  .list-item .actions{width:100%;justify-content:flex-end;gap:4px}
+
+  /* 円グラフ */
+  .pie-svg{width:150px;height:150px}
+  .pie-wrap{gap:12px;padding:10px 0}
+  .pie-legend-item{font-size:12px}
+
+  /* 再仕訳モーダル */
+  .rj-modal{padding:16px;max-height:90vh}
+  .rj-row .form-row{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -387,6 +425,13 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
         <input type="text" id="tag-manage-new" placeholder="新しいタグ">
         <button class="btn btn-small" onclick="addManagedTag()">追加</button>
       </div>
+    </div>
+
+    <!-- バックアップ -->
+    <div class="card">
+      <h2>データのバックアップ</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">保存のたびに自動で3世代バックアップされます（data.json.bak1〜3）。手動でJSONをダウンロードして保管もできます。</p>
+      <a href="/api/data" download="kakeibo_backup.json" class="btn btn-small" style="display:inline-block;text-decoration:none;padding:10px 20px">JSONをダウンロード</a>
     </div>
   </div>
 </div>
