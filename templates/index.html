@@ -228,16 +228,16 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
 <body>
 <div class="app">
   <nav id="main-nav">
-    <button class="active" data-section="dashboard">ダッシュボード</button>
-    <button data-section="record">記録</button>
+    <button class="active" data-section="record">記録</button>
     <button data-section="calendar">カレンダー</button>
     <button data-section="cashflow">キャッシュフロー</button>
     <button data-section="ledger">帳簿</button>
+    <button data-section="dashboard">ダッシュボード</button>
     <button data-section="settings">設定</button>
   </nav>
 
   <!-- ═══ Dashboard ═══ -->
-  <div id="dashboard" class="section active">
+  <div id="dashboard" class="section">
     <div class="hero-card">
       <div class="hero-label">あといくら使える</div>
       <div class="big-number green" id="d-spendable" style="margin:8px 0 4px">--</div>
@@ -282,7 +282,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
   </div>
 
   <!-- ═══ Record ═══ -->
-  <div id="record" class="section">
+  <div id="record" class="section active">
     <div class="card">
       <h2>仕訳を記録</h2>
       <div class="type-toggle">
@@ -570,28 +570,27 @@ function closeCalDetail(){document.getElementById('cal-detail-overlay')?.remove(
 
 // ─── Dashboard ───
 async function loadDashboard(){
-  const[summary,accounts]=await Promise.all([api('/api/summary'),api('/api/accounts')]);
+  const[summary,accounts,cashflow]=await Promise.all([api('/api/summary'),api('/api/accounts'),api('/api/cashflow')]);
   allAccounts=accounts;
+  // 来月末残高
+  const nm=cashflow.months&&cashflow.months[1]?cashflow.months[1]:cashflow.months&&cashflow.months[0];
+  const nmBal=nm?nm.endBalance:0;
+  const nmLabel=nm?nm.label:'来月';
   const sp=document.getElementById('d-spendable');
-  sp.textContent=yen(summary.spendable);
-  sp.className='big-number '+(summary.spendable>=0?'green':'red');
+  sp.textContent=yen(nmBal);
+  sp.className='big-number '+(nmBal>=0?'green':'red');
+  document.getElementById('d-spendable-detail').textContent=`${nmLabel}末の残高予測`;
   document.getElementById('d-usable-net').textContent=yen(summary.usableNet);
   document.getElementById('d-current-net').textContent=yen(summary.currentNet);
   document.getElementById('d-networth').textContent=yen(summary.netWorth);
-  // 計算式を表示
-  const parts=[];
-  parts.push(`使える残高 ${yen(summary.usableNet)}`);
-  if(summary.remainingFixed) parts.push(`固定費 −${yen(summary.remainingFixed)}`);
-  if(summary.remainingIncome) parts.push(`定期収入 +${yen(summary.remainingIncome)}`);
-  document.getElementById('d-spendable-detail').textContent=parts.join(' / ');
   document.getElementById('d-c-assets').textContent=yen(summary.currentAssets);
   document.getElementById('d-c-liabilities').textContent=yen(summary.currentLiabilities);
   document.getElementById('d-l-assets').textContent=yen(summary.longAssets);
   document.getElementById('d-l-liabilities').textContent=yen(summary.longLiabilities);
   document.getElementById('d-expenses').textContent=yen(summary.monthExpenses);
   document.getElementById('d-income').textContent=yen(summary.monthIncome);
-  const total=summary.monthExpenses+Math.max(0,summary.spendable);
-  if(total>0){const pct=Math.max(0,Math.min(100,(Math.max(0,summary.spendable)/total)*100));
+  const total=summary.currentAssets;
+  if(total>0){const pct=Math.max(0,Math.min(100,(Math.max(0,nmBal)/total)*100));
     const b=document.getElementById('d-progress');b.style.width=pct+'%';
     b.style.background=pct<20?'var(--red)':pct<50?'var(--orange)':'var(--green)';}
   document.getElementById('d-account-list').innerHTML=accounts.map(a=>{
@@ -1136,6 +1135,9 @@ async function delManagedTag(t){if(!confirm('#'+t+'を削除？'))return;await d
 // ─── Ledger ───
 async function loadLedger(){allTx=await api('/api/transactions');await refreshAccounts();
   const months=getMonths(allTx);fillSel('pl-month',months,false);fillSel('chart-month',months,false);fillSel('filter-month',months,true);
+  // 当月をデフォルト選択
+  const ym=new Date().toISOString().substring(0,7);
+  ['pl-month','chart-month'].forEach(id=>{const el=document.getElementById(id);if(el&&Array.from(el.options).some(o=>o.value===ym))el.value=ym;});
   loadPL();loadBS();renderChart();renderHistory();}
 function getMonths(txs){const s=new Set();txs.forEach(t=>s.add(t.date.substring(0,7)));return Array.from(s).sort().reverse();}
 function fillSel(id,months,addAll){const el=document.getElementById(id);const p=el.value;
@@ -1396,7 +1398,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   const today=new Date().toISOString().split('T')[0];
   document.getElementById('rec-date').value=today;document.getElementById('tr-date').value=today;
   await Promise.all([refreshAccounts(),loadCategories(),loadTagsData()]);
-  populateSelects();renderFcTagChips();loadDashboard();
+  populateSelects();renderFcTagChips();loadRecent();
 });
 </script>
 </body>
