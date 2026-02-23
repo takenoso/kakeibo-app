@@ -230,8 +230,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
   <nav id="main-nav">
     <button class="active" data-section="record">記録</button>
     <button data-section="calendar">カレンダー</button>
-    <button data-section="cashflow">キャッシュフロー</button>
-    <button data-section="ledger">帳簿</button>
+    <button data-section="summary">サマリー</button>
     <button data-section="settings">設定</button>
   </nav>
 
@@ -292,13 +291,9 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
     <div id="cal-body"></div>
   </div>
 
-  <!-- ═══ Cash Flow ═══ -->
-  <div id="cashflow" class="section">
+  <!-- ═══ Summary ═══ -->
+  <div id="summary" class="section">
     <div id="cf-body"></div>
-  </div>
-
-  <!-- ═══ Ledger ═══ -->
-  <div id="ledger" class="section">
     <div class="card">
       <h2>月別支出内訳</h2>
       <div class="filter-row">
@@ -315,19 +310,6 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
       <div class="fs-header">損益計算書 (P/L)<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
       <div id="pl-body"></div>
     </div></div>
-    <div class="card"><div class="fs">
-      <div class="fs-header">貸借対照表 (B/S)</div>
-      <div id="bs-body" style="margin-top:12px"></div>
-    </div></div>
-    <div class="card">
-      <h2>仕訳帳</h2>
-      <div class="filter-row">
-        <select id="filter-month" onchange="renderHistory()"><option value="">全期間</option></select>
-        <select id="filter-type" onchange="renderHistory()"><option value="">すべて</option><option value="expense">支出</option><option value="income">収入</option><option value="transfer">振替</option></select>
-        <input type="text" id="filter-search" placeholder="検索（カテゴリ/メモ/タグ/予定）" oninput="renderHistory()" style="flex:1;min-width:100px">
-      </div>
-      <div id="history-list"></div>
-    </div>
   </div>
 
   <!-- ═══ Settings ═══ -->
@@ -424,8 +406,7 @@ document.querySelectorAll('#main-nav button').forEach(btn=>{
     document.getElementById(id).classList.add('active');btn.classList.add('active');
     if(id==='record'){loadRecent();populateSelects();}
     if(id==='calendar')loadCalendar();
-    if(id==='cashflow')loadCashFlow();
-    if(id==='ledger')loadLedger();
+    if(id==='summary')loadSummary();
     if(id==='settings'){loadAccounts();loadFixedCosts();loadCatManager();loadTagManager();populateSelects();renderFcTagChips();}
   });
 });
@@ -986,12 +967,13 @@ async function addManagedTag(){const el=document.getElementById('tag-manage-new'
 async function delManagedTag(t){if(!confirm('#'+t+'を削除？'))return;await delJson('/api/tags',{tag:t});loadTagManager();}
 
 // ─── Ledger ───
-async function loadLedger(){allTx=await api('/api/transactions');await refreshAccounts();
-  const months=getMonths(allTx);fillSel('pl-month',months,false);fillSel('chart-month',months,false);fillSel('filter-month',months,true);
-  // 当月をデフォルト選択
+async function loadSummary(){
+  await loadCashFlow();
+  allTx=await api('/api/transactions');await refreshAccounts();
+  const months=getMonths(allTx);fillSel('pl-month',months,false);fillSel('chart-month',months,false);
   const ym=new Date().toISOString().substring(0,7);
   ['pl-month','chart-month'].forEach(id=>{const el=document.getElementById(id);if(el&&Array.from(el.options).some(o=>o.value===ym))el.value=ym;});
-  loadPL();loadBS();renderChart();renderHistory();}
+  loadPL();renderChart();}
 function getMonths(txs){const s=new Set();txs.forEach(t=>s.add(t.date.substring(0,7)));return Array.from(s).sort().reverse();}
 function fillSel(id,months,addAll){const el=document.getElementById(id);const p=el.value;
   el.innerHTML=(addAll?'<option value="">全期間</option>':'')+months.map(m=>`<option value="${m}">${m}</option>`).join('');
@@ -1042,35 +1024,7 @@ async function loadPL(){const m=document.getElementById('pl-month').value;
   h+=`<div class="fs-row grand-total"><span>当期純利益</span><span class="val" style="color:${nc}">${yen(pl.netIncome)}</span></div>`;
   document.getElementById('pl-body').innerHTML=h;}
 
-async function loadBS(){const bs=await api('/api/bs');
-  // 左: 資産
-  let L='<div class="bs-col-header">資産の部</div>';
-  L+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600">流動資産</div>';
-  if(bs.currentAssets.length)bs.currentAssets.forEach(a=>{L+=`<div class="bs-row"><span>${a.name}</span><span style="color:${a.balance<0?'var(--red)':'var(--text)'}">${yen(a.balance)}</span></div>`;});
-  else L+='<div class="bs-row"><span style="color:var(--text-muted)">なし</span><span>¥0</span></div>';
-  L+=`<div class="bs-subtotal"><span>流動資産計</span><span>${yen(bs.totalCurrentAssets)}</span></div>`;
-  if(bs.longAssets.length){
-    L+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">固定資産</div>';
-    bs.longAssets.forEach(a=>{L+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
-    L+=`<div class="bs-subtotal"><span>固定資産計</span><span>${yen(bs.totalLongAssets)}</span></div>`;
-  }
-  L+=`<div class="bs-total"><span>資産合計</span><span>${yen(bs.totalAssets)}</span></div>`;
 
-  // 右: 負債+純資産
-  let R='<div class="bs-col-header">負債・純資産の部</div>';
-  R+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600">流動負債</div>';
-  if(bs.currentLiabilities.length)bs.currentLiabilities.forEach(a=>{R+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
-  else R+='<div class="bs-row"><span style="color:var(--text-muted)">なし</span><span>¥0</span></div>';
-  R+=`<div class="bs-subtotal"><span>流動負債計</span><span>${yen(bs.totalCurrentLiabilities)}</span></div>`;
-  if(bs.longLiabilities.length){
-    R+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">固定負債</div>';
-    bs.longLiabilities.forEach(a=>{R+=`<div class="bs-row"><span>${a.name}</span><span>${yen(a.balance)}</span></div>`;});
-    R+=`<div class="bs-subtotal"><span>固定負債計</span><span>${yen(bs.totalLongLiabilities)}</span></div>`;
-  }
-  R+=`<div class="bs-subtotal"><span>負債合計</span><span>${yen(bs.totalLiabilities)}</span></div>`;
-  R+='<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;font-weight:600">純資産</div>';
-  R+=`<div class="bs-total"><span>純資産</span><span style="color:var(--accent)">${yen(bs.netWorth)}</span></div>`;
-  document.getElementById('bs-body').innerHTML=`<div class="bs-grid"><div class="bs-col">${L}</div><div class="bs-col">${R}</div></div>`;}
 
 const CC_DEFAULT={'食費':'#5b7fff','交通費':'#fbbf24','交際費':'#f472b6','日用品費':'#34d399','趣味・娯楽費':'#a78bfa','通信費':'#22d3ee','水道光熱費':'#74c0fc','住居費':'#f87171','保険料':'#fb923c','医療費':'#ef4444','被服費':'#c084fc','教育費':'#2dd4bf','雑費':'#6b7280','必需品':'#a3e635','美容費':'#ec4899','クレジットカード仮勘定':'#94a3b8','CC未仕訳（雑費）':'#78716c','残高調整':'#a1a1aa',
   '遊びてえ':'#f472b6','明大祭実行委員会':'#a78bfa','武田塾':'#34d399','美容院':'#ec4899','個人':'#22d3ee','クレジットカード':'#fbbf24'};
@@ -1111,21 +1065,7 @@ function renderChart(){const m=document.getElementById('chart-month').value;cons
     return`<div class="pie-legend-item"><input type="color" value="${co}" onchange="savePieColor('${escHtml(c)}',this.value)" style="width:20px;height:20px;border:none;padding:0;cursor:pointer;border-radius:3px;background:none"><span class="pie-legend-label">${c}</span><span class="pie-legend-value">${yen(ct[c])}</span><span class="pie-legend-pct">${pct}%</span></div>`;}).join('');
   el.innerHTML=`<div class="pie-wrap">${svg}<div class="pie-legend">${legend}</div></div>`;}
 
-function renderHistory(){const m=document.getElementById('filter-month').value,tp=document.getElementById('filter-type').value,s=document.getElementById('filter-search').value.toLowerCase();
-  let f=allTx.slice().reverse();
-  if(m)f=f.filter(t=>t.date.startsWith(m));
-  if(tp){
-    if(tp==='expense')f=f.filter(t=>t.type==='expense'||t.type==='cc_detail');
-    else f=f.filter(t=>t.type===tp);
-  }
-  if(s)f=f.filter(t=>(t.category||'').toLowerCase().includes(s)||(t.memo||'').toLowerCase().includes(s)||(t.tags||[]).some(tg=>tg.toLowerCase().includes(s))||(t.schedule||'').toLowerCase().includes(s));
-  const el=document.getElementById('history-list');
-  if(!f.length){el.innerHTML='<p style="color:var(--text-dim);font-size:13px;padding:12px 0">該当なし</p>';return;}
-  el.innerHTML=f.map(t=>{let label,cls,amt;
-    const isCcD=t.type==='cc_detail';
-    if(t.type==='transfer'){label=`振替: ${accName(t.fromAccountId)} → ${accName(t.toAccountId)}`;cls='transfer';amt=yen(t.amount);}
-    else{label=(isCcD?'<span style="color:var(--orange);font-size:10px">[CC明細]</span> ':'')+escHtml(t.category);cls=isCcD?'expense':t.type;amt=(t.type==='income'?'+':'−')+yen(t.amount);}
-    return`<div class="list-item"><div class="info"><div class="name">${label}</div>${txHierarchy(t)}<div class="sub">${t.date}${t.accountId?' / '+accName(t.accountId):''}</div></div><div class="amount ${cls}">${amt}</div></div>`;}).join('');}
+
 
 // ─── Re-journal (再仕訳) ───
 let rjTx=null, rjRows=[];
