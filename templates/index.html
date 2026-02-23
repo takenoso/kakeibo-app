@@ -2,8 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>家計簿</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#08090d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
 <style>
 :root {
   --bg: #08090d; --surface: #12141c; --surface2: #1a1e2a; --surface3: #222738;
@@ -17,7 +23,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
-.app{max-width:880px;margin:0 auto;padding:12px 16px 80px}
+.app{max-width:880px;margin:0 auto;padding:12px 16px 80px;padding-bottom:max(80px,calc(80px + env(safe-area-inset-bottom)))}
 
 /* ─── Nav ─── */
 nav{display:flex;gap:2px;background:var(--surface);padding:4px;border-radius:var(--radius);margin-bottom:20px;border:1px solid var(--border);backdrop-filter:blur(8px)}
@@ -1238,6 +1244,11 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await Promise.all([refreshAccounts(),loadCategories(),loadTagsData()]);
   populateSelects();renderFcTagChips();loadRecent();
 });
+
+// PWA: Service Worker 登録
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
 </script>
 </body>
 </html>

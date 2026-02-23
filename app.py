@@ -6,7 +6,7 @@ import os
 import shutil
 import calendar as cal
 from datetime import date, timedelta
-from flask import Flask, jsonify, request, render_template, send_file
+from flask import Flask, jsonify, request, render_template, send_file, send_from_directory
 
 app = Flask(__name__)
 
@@ -141,6 +141,11 @@ def calc_pending_income(data):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory("static", "sw.js", mimetype="application/javascript")
 
 
 # ─── Accounts ───
