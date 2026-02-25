@@ -855,43 +855,6 @@ def get_pl():
         acc_id = fc_acc["id"]
         pl_fc_by_acc[acc_id] = pl_fc_by_acc.get(acc_id, 0) + fc["amount"]
 
-    # CC未仕訳: 当月はCC残高ベース、過去月はexpense取引ベースで計算
-    today = date.today()
-    today_ym = today.strftime("%Y-%m")
-    cc_unsorted = 0
-    for a in data["accounts"]:
-        if not is_cc_account(a):
-            continue
-        if ym == today_ym:
-            # 当月: CC残高から算出、cc_detailは請求サイクル内のみ
-            cc_base = a["balance"]
-            cycle_start = get_cc_cycle_start(a, today).isoformat()
-            cc_det_sum = sum(
-                t["amount"] for t in data["transactions"]
-                if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                and cycle_start <= t["date"] <= today.isoformat()
-            )
-        else:
-            # 過去月: その月のexpense取引・cc_detailから算出
-            cc_base = sum(
-                t["amount"] for t in data["transactions"]
-                if t["type"] == "expense" and t.get("accountId") == a["id"]
-                and t["date"].startswith(ym)
-            )
-            cc_det_sum = sum(
-                t["amount"] for t in data["transactions"]
-                if t["type"] == "cc_detail" and t.get("accountId") == a["id"]
-                and t["date"].startswith(ym)
-            )
-        fc_sum = pl_fc_by_acc.get(a["id"], 0)
-        unsorted = cc_base - cc_det_sum - fc_sum
-        if unsorted > 0:
-            cc_unsorted += unsorted
-    if cc_unsorted > 0:
-        expenses_by_cat["雑費"] = expenses_by_cat.get("雑費", 0) + cc_unsorted
-        expense_detail.setdefault("雑費", {}).setdefault("(タグなし)", {})
-        expense_detail["雑費"]["(タグなし)"]["クレカ未分類"] = expense_detail["雑費"]["(タグなし)"].get("クレカ未分類", 0) + cc_unsorted
-
     total_income = sum(income_by_cat.values())
     total_expenses = sum(expenses_by_cat.values())
     return jsonify({
@@ -903,7 +866,6 @@ def get_pl():
         "totalIncome": total_income,
         "totalExpenses": total_expenses,
         "netIncome": total_income - total_expenses,
-        "ccUnsorted": cc_unsorted,
     })
 
 
