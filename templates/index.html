@@ -281,15 +281,15 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
   <!-- ═══ Record ═══ -->
   <div id="record" class="section active">
     <div class="card">
-      <h2>仕訳を記録</h2>
+      <h2>収支を記録</h2>
       <div class="type-toggle">
         <button id="tb-expense" class="sel-expense" onclick="setTxType('expense')">支出</button>
         <button id="tb-income" onclick="setTxType('income')">収入</button>
-        <button id="tb-transfer" onclick="setTxType('transfer')">振替</button>
-        <button id="tb-cc_detail" onclick="setTxType('cc_detail')">CC明細</button>
+        <button id="tb-transfer" onclick="setTxType('transfer')">口座間移動</button>
+        <button id="tb-cc_detail" onclick="setTxType('cc_detail')">クレカ明細</button>
       </div>
       <div id="cc-detail-note" style="display:none;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--orange)">
-        CC明細: クレジットカードの中身を分類するための記録です。残高には影響しません。
+        クレカ明細: クレジットカードの内訳を分類する記録です。残高には影響しません。
       </div>
       <div id="form-normal">
         <div class="form-row">
@@ -297,7 +297,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
           <div class="form-group"><label>金額</label><input type="number" id="rec-amount" placeholder="0" inputmode="numeric"></div>
         </div>
         <div class="form-row-3">
-          <div class="form-group"><label>勘定科目</label><select id="rec-category"></select></div>
+          <div class="form-group"><label>カテゴリ</label><select id="rec-category"></select></div>
           <div class="form-group"><label id="rec-account-label">決済手段</label><select id="rec-account"></select></div>
           <div class="form-group"><label>予定</label><input type="text" id="rec-schedule" placeholder="例: 四国旅行"></div>
         </div>
@@ -318,14 +318,14 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
           <div class="form-group"><label>メモ</label><input type="text" id="tr-memo" placeholder="例: ATM引出し"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>振替元（出金）</label><select id="tr-from"></select></div>
-          <div class="form-group"><label>振替先（入金/返済）</label><select id="tr-to"></select></div>
+          <div class="form-group"><label>移動元（出金）</label><select id="tr-from"></select></div>
+          <div class="form-group"><label>移動先（入金/返済）</label><select id="tr-to"></select></div>
         </div>
       </div>
       <button class="btn btn-primary" onclick="addTransaction()">記録する</button>
     </div>
     <div class="card">
-      <h2>最近の仕訳</h2>
+      <h2>最近の記録</h2>
       <div id="recent-list"></div>
     </div>
   </div>
@@ -350,7 +350,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
       <div id="chart"></div>
     </div>
     <div class="card"><div class="fs">
-      <div class="fs-header">損益計算書 (P/L)<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
+      <div class="fs-header">収支レポート<div style="font-size:13px;font-weight:400;color:var(--text-dim);margin-top:6px"><select id="pl-month" onchange="loadPL()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px"></select></div></div>
       <div id="pl-body"></div>
     </div></div>
     <div id="cf-body"></div>
@@ -364,10 +364,10 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
       <div class="form-row-4">
         <div class="form-group"><label>口座名</label><input type="text" id="acc-name" placeholder="例: PayPay"></div>
         <div class="form-group"><label>分類</label><select id="acc-class-type" onchange="toggleLiabilityFields()">
-          <option value="current-asset">流動資産（現金・銀行）</option>
-          <option value="current-liability">流動負債（クレカ・支払予定）</option>
-          <option value="long-asset">固定資産（将来の入金）</option>
-          <option value="long-liability">固定負債（長期借入）</option>
+          <option value="current-asset">現金・銀行口座</option>
+          <option value="current-liability">クレカ・後払い</option>
+          <option value="long-asset">長期資産（将来の入金）</option>
+          <option value="long-liability">長期負債（長期借入）</option>
         </select></div>
         <div class="form-group"><label>現在残高</label><input type="number" id="acc-balance" placeholder="0" inputmode="numeric"></div>
         <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary" onclick="addAccount()" style="width:100%">追加</button></div>
@@ -389,7 +389,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
         <div class="form-group"><label>金額</label><input type="number" id="fc-amount" placeholder="0" inputmode="numeric"></div>
       </div>
       <div class="form-row-3">
-        <div class="form-group"><label>勘定科目</label><select id="fc-category"></select></div>
+        <div class="form-group"><label>カテゴリ</label><select id="fc-category"></select></div>
         <div class="form-group"><label>引落日</label><input type="number" id="fc-day" placeholder="1" min="1" max="31" inputmode="numeric"></div>
         <div class="form-group"><label>引落口座</label><select id="fc-account"></select></div>
       </div>
@@ -407,7 +407,7 @@ nav button:hover:not(.active){background:var(--surface2);color:var(--text)}
 
     <!-- カテゴリ -->
     <div class="card">
-      <h2>勘定科目（カテゴリ）管理</h2>
+      <h2>カテゴリ管理</h2>
       <h3 style="font-size:12px;color:var(--red);margin:10px 0 6px;font-weight:600">支出カテゴリ</h3>
       <div class="chip-list" id="cat-expense-list"></div>
       <div class="tag-add-row" style="margin-bottom:16px">
@@ -467,10 +467,10 @@ function yen(n){return(n<0?'−':'')+'¥'+Math.abs(n).toLocaleString()}
 function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function accName(id){const a=allAccounts.find(a=>a.id===id);return a?a.name:'?'}
 function accClassLabel(a){
-  if(a.type==='asset'&&a.class==='current')return'流動資産';
-  if(a.type==='asset'&&a.class==='long')return'固定資産';
-  if(a.type==='liability'&&a.class==='current')return'流動負債';
-  if(a.type==='liability'&&a.class==='long')return'固定負債';
+  if(a.type==='asset'&&a.class==='current')return'現金・銀行';
+  if(a.type==='asset'&&a.class==='long')return'長期資産';
+  if(a.type==='liability'&&a.class==='current')return'クレカ・後払い';
+  if(a.type==='liability'&&a.class==='long')return'長期負債';
   return a.type==='asset'?'資産':'負債';
 }
 function accBadgeClass(a){
@@ -526,7 +526,7 @@ function toggleEditFcTag(fcId,tag){
 // ─── Calendar Day Detail Modal ───
 function showDayDetail(day){
   const d=calDayStore[day];if(!d||!d.events.length)return;
-  const typeLabel={expense:'支出',income:'収入',transfer:'振替',cc_detail:'CC明細'};
+  const typeLabel={expense:'支出',income:'収入',transfer:'口座間移動',cc_detail:'クレカ明細'};
   let rows='';
   d.events.forEach(e=>{
     const amtColor=e.amount>=0?'var(--green)':'var(--red)';
@@ -584,7 +584,7 @@ async function addTransaction(){
   if(txType==='transfer'){
     const d=document.getElementById('tr-date').value,a=document.getElementById('tr-amount').value,m=document.getElementById('tr-memo').value;
     const f=document.getElementById('tr-from').value,to=document.getElementById('tr-to').value;
-    if(!d||!a){alert('日付と金額を入力');return;}if(f===to){alert('振替元と振替先が同じ');return;}
+    if(!d||!a){alert('日付と金額を入力');return;}if(f===to){alert('移動元と移動先が同じ');return;}
     await postJson('/api/transactions',{date:d,amount:+a,type:'transfer',fromAccountId:+f,toAccountId:+to,memo:m});
     document.getElementById('tr-amount').value='';document.getElementById('tr-memo').value='';
   }else{
@@ -619,18 +619,18 @@ function txHtml(t){
   let label,cls,amt;
   let row='';
   if(t.type==='transfer'){
-    label=`振替: ${accName(t.fromAccountId)} → ${accName(t.toAccountId)}`;cls='transfer';amt=yen(t.amount);
+    label=`口座間移動: ${accName(t.fromAccountId)} → ${accName(t.toAccountId)}`;cls='transfer';amt=yen(t.amount);
     const sub=t.date+(t.memo?' / '+escHtml(t.memo):'');
     row+=`<div class="list-item"><div class="info"><div class="name">${label}</div><div class="sub">${sub}</div></div>
-      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-small" onclick="openRejournal(${t.id})" style="font-size:11px;color:var(--cyan)">再仕訳</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
+      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-small" onclick="openRejournal(${t.id})" style="font-size:11px;color:var(--cyan)">振り分け変更</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
   }else{
     const isCcDetail=t.type==='cc_detail';
-    label=(isCcDetail?'<span style="color:var(--orange);font-size:11px">[CC明細]</span> ':'')+escHtml(t.category);
+    label=(isCcDetail?'<span style="color:var(--orange);font-size:11px">[クレカ明細]</span> ':'')+escHtml(t.category);
     cls=isCcDetail?'expense':t.type;
     amt=(t.type==='income'?'+':'−')+yen(t.amount);
     const sub=t.date+' / '+accName(t.accountId)+(isCcDetail?' (残高変動なし)':'');
     row+=`<div class="list-item"><div class="info"><div class="name">${label}</div>${txHierarchy(t)}<div class="sub">${sub}</div></div>
-      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-small" onclick="openRejournal(${t.id})" style="font-size:11px;color:var(--cyan)">再仕訳</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
+      <div class="amount ${cls}">${amt}</div><div class="actions"><button class="btn btn-edit" onclick="showEditTx(${t.id})">編集</button><button class="btn btn-small" onclick="openRejournal(${t.id})" style="font-size:11px;color:var(--cyan)">振り分け変更</button><button class="btn btn-danger" onclick="deleteTx(${t.id})">削除</button></div></div>`;
   }
   if(editingTxId===t.id){
     row+=txEditForm(t);
@@ -711,7 +711,7 @@ async function saveEditTx(id){
   editingTxId=null;editingTxTags={};
   await refreshAccounts();loadRecent();
 }
-async function deleteTx(id){if(!confirm('この仕訳を削除しますか？'))return;await api('/api/transactions/'+id,{method:'DELETE'});await refreshAccounts();loadRecent();}
+async function deleteTx(id){if(!confirm('この記録を削除しますか？'))return;await api('/api/transactions/'+id,{method:'DELETE'});await refreshAccounts();loadRecent();}
 
 // ─── Calendar ───
 let calMonth=new Date().toISOString().slice(0,7);
@@ -806,11 +806,11 @@ async function loadCashFlow(){
   // サマリー
   html+=`<div class="cf-summary">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
-      <span style="font-size:13px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em">流動純資産（使えるお金）</span>
+      <span style="font-size:13px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em">今すぐ使えるお金</span>
       <span class="big-number accent" style="font-size:30px">${yen(cf.currentNet)}</span></div>
     <div style="display:flex;gap:20px;font-size:13px;color:var(--text-dim)">
-      <span>流動資産: <span style="color:var(--green)">${yen(cf.currentAssets)}</span></span>
-      <span>流動負債: <span style="color:var(--red)">${yen(cf.currentLiabilities)}</span></span></div>
+      <span>現金・銀行: <span style="color:var(--green)">${yen(cf.currentAssets)}</span></span>
+      <span>クレカ・後払い: <span style="color:var(--red)">${yen(cf.currentLiabilities)}</span></span></div>
     <div class="divider"></div>
     <div style="display:flex;gap:20px;font-size:13px">
       <span style="color:var(--text-dim)">今月の支出実績: <span style="color:var(--red);font-weight:600">${yen(cf.monthExpenses)}</span></span>
@@ -821,7 +821,7 @@ async function loadCashFlow(){
     cf.creditCards.forEach(cc=>{
       if(cc.balance>0){
         html+=`<div class="cf-credit"><div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:700">${escHtml(cc.name)}</span> <span class="acc-badge c-liability">流動負債</span></div>
+          <div><span style="font-weight:700">${escHtml(cc.name)}</span> <span class="acc-badge c-liability">後払い</span></div>
           <span style="color:var(--red);font-weight:700">${yen(cc.balance)}</span></div>
           ${cc.payDay?`<div style="font-size:12px;color:var(--text-dim);margin-top:6px">毎月${cc.payDay}日 ${cc.payFromAccount?cc.payFromAccount+'から引落':''}  </div>`:''}</div>`;}
     });
@@ -884,10 +884,10 @@ async function loadAccounts(){
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group" style="margin:0"><label>口座名</label><input type="text" id="ae-name-${a.id}" value="${escHtml(a.name)}"></div>
           <div class="form-group" style="margin:0"><label>分類</label><select id="ae-type-${a.id}" onchange="toggleAccEditFields(${a.id})">
-            <option value="current-asset" ${ct==='current-asset'?'selected':''}>流動資産</option>
-            <option value="current-liability" ${ct==='current-liability'?'selected':''}>流動負債</option>
-            <option value="long-asset" ${ct==='long-asset'?'selected':''}>固定資産</option>
-            <option value="long-liability" ${ct==='long-liability'?'selected':''}>固定負債</option>
+            <option value="current-asset" ${ct==='current-asset'?'selected':''}>現金・銀行口座</option>
+            <option value="current-liability" ${ct==='current-liability'?'selected':''}>クレカ・後払い</option>
+            <option value="long-asset" ${ct==='long-asset'?'selected':''}>長期資産</option>
+            <option value="long-liability" ${ct==='long-liability'?'selected':''}>長期負債</option>
           </select></div>
           <div class="form-group" style="margin:0"><label>残高</label><input type="number" id="ae-bal-${a.id}" value="${a.balance}" inputmode="numeric"></div>
         </div>
@@ -1072,12 +1072,12 @@ async function loadPL(){const m=document.getElementById('pl-month').value;
   h+=renderPlSection(ee,pl.expenseDetail||{},'var(--red)');
   h+=`<div class="fs-row total"><span>費用合計</span><span class="val" style="color:var(--red)">${yen(pl.totalExpenses)}</span></div>`;
   const nc=pl.netIncome>=0?'var(--green)':'var(--red)';
-  h+=`<div class="fs-row grand-total"><span>当期純利益</span><span class="val" style="color:${nc}">${yen(pl.netIncome)}</span></div>`;
+  h+=`<div class="fs-row grand-total"><span>今月の収支</span><span class="val" style="color:${nc}">${yen(pl.netIncome)}</span></div>`;
   document.getElementById('pl-body').innerHTML=h;}
 
 
 
-const CC_DEFAULT={'食費':'#5b7fff','交通費':'#fbbf24','交際費':'#f472b6','日用品費':'#34d399','趣味・娯楽費':'#a78bfa','通信費':'#22d3ee','水道光熱費':'#74c0fc','住居費':'#f87171','保険料':'#fb923c','医療費':'#ef4444','被服費':'#c084fc','教育費':'#2dd4bf','雑費':'#6b7280','必需品':'#a3e635','美容費':'#ec4899','クレジットカード仮勘定':'#94a3b8','CC未仕訳（雑費）':'#78716c','残高調整':'#a1a1aa',
+const CC_DEFAULT={'食費':'#5b7fff','交通費':'#fbbf24','交際費':'#f472b6','日用品費':'#34d399','趣味・娯楽費':'#a78bfa','通信費':'#22d3ee','水道光熱費':'#74c0fc','住居費':'#f87171','保険料':'#fb923c','医療費':'#ef4444','被服費':'#c084fc','教育費':'#2dd4bf','雑費':'#6b7280','必需品':'#a3e635','美容費':'#ec4899','クレジットカード仮勘定':'#94a3b8','クレカ未分類（その他）':'#78716c','残高調整':'#a1a1aa',
   '遊びてえ':'#f472b6','明大祭実行委員会':'#a78bfa','武田塾':'#34d399','美容院':'#ec4899','個人':'#22d3ee','クレジットカード':'#fbbf24'};
 let chartMode='category';
 function setChartMode(mode){chartMode=mode;
@@ -1133,11 +1133,11 @@ function renderRjModal(){
   const cats=t.type==='income'?categories.income:categories.expense;
   const allCats=[...categories.expense,...categories.income].filter((v,i,a)=>a.indexOf(v)===i);
   let h=`<div class="rj-overlay" id="rj-overlay" onclick="if(event.target===this)closeRejournal()"><div class="rj-modal">
-    <h3>再仕訳</h3>
+    <h3>振り分けを変更</h3>
     <div class="rj-original">
-      <div class="rj-label">元の仕訳</div>
+      <div class="rj-label">元の記録</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-        <div><span style="font-weight:600">${escHtml(t.category||'振替')}</span>
+        <div><span style="font-weight:600">${escHtml(t.category||'口座間移動')}</span>
           <span style="color:var(--text-muted);margin-left:8px">${t.date}</span>
           <span style="color:var(--text-muted);margin-left:8px">${origAccName}</span></div>
         <span style="font-weight:700;color:var(--red)">${yen(t.amount)}</span>
@@ -1146,19 +1146,19 @@ function renderRjModal(){
       ${t.memo?`<div style="color:var(--text-muted);margin-top:2px;font-size:12px">${escHtml(t.memo)}</div>`:''}
     </div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">
-      再仕訳先を設定してください。合計金額が元の金額と一致する必要があります。<br>
-      差額がある場合は自動で相殺仕訳が作成されます。
+      振り分け先を設定してください。合計金額が元の金額と一致する必要があります。<br>
+      差額がある場合は自動で調整されます。
     </div>
     <div class="rj-rows" id="rj-rows">`;
   rjRows.forEach((r,i)=>{
     h+=`<div class="rj-row">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:12px;font-weight:600;color:var(--text-dim)">仕訳 ${i+1}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text-dim)">明細 ${i+1}</span>
         ${rjRows.length>1?`<button class="btn btn-danger" onclick="rjRemoveRow(${i})" style="font-size:11px;padding:4px 8px">削除</button>`:''}
       </div>
       <div class="form-row" style="margin-bottom:8px">
         <div class="form-group"><label>金額</label><input type="number" value="${r.amount}" onchange="rjRows[${i}].amount=+this.value" inputmode="numeric" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none"></div>
-        <div class="form-group"><label>勘定科目</label><select onchange="rjRows[${i}].category=this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
+        <div class="form-group"><label>カテゴリ</label><select onchange="rjRows[${i}].category=this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
           ${allCats.map(c=>`<option${c===r.category?' selected':''}>${c}</option>`).join('')}</select></div>
       </div>
       <div class="form-row" style="margin-bottom:8px">
@@ -1170,7 +1170,7 @@ function renderRjModal(){
   });
   h+=`</div>
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button class="btn btn-small" onclick="rjAddRow()">+ 仕訳行を追加</button>
+      <button class="btn btn-small" onclick="rjAddRow()">+ 明細を追加</button>
       <button class="btn btn-small" onclick="rjSplit()">均等分割</button>
     </div>`;
   // 合計チェック
@@ -1182,7 +1182,7 @@ function renderRjModal(){
   }
   h+=`<div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeRejournal()">キャンセル</button>
-      <button class="btn btn-primary" style="width:auto;padding:10px 32px" onclick="executeRejournal()">再仕訳を実行</button>
+      <button class="btn btn-primary" style="width:auto;padding:10px 32px" onclick="executeRejournal()">振り分けを変更する</button>
     </div>
   </div></div>`;
   document.body.insertAdjacentHTML('beforeend',h);
@@ -1211,7 +1211,7 @@ async function executeRejournal(){
       date:t.date, amount:r.amount, type:t.type==='cc_detail'?'cc_detail':(categories.income.includes(r.category)?'income':'expense'),
       category:r.category, accountId:r.accountId,
       tags:t.tags||[], schedule:t.schedule||'',
-      memo:r.memo||(t.memo?t.memo+' (再仕訳)':'再仕訳')
+      memo:r.memo||(t.memo?t.memo+' (振り分け変更)':'振り分け変更')
     });
   }
   // 3. 差額があれば調整仕訳
@@ -1222,19 +1222,19 @@ async function executeRejournal(){
       date:t.date, amount:diff, type:'income',
       category:'雑収入', accountId:t.accountId||allAccounts[0]?.id||1,
       tags:t.tags||[], schedule:t.schedule||'',
-      memo:'再仕訳調整（差額）'
+      memo:'差額調整'
     });
   }else if(diff<0){
     await postJson('/api/transactions',{
       date:t.date, amount:Math.abs(diff), type:'expense',
       category:'雑費', accountId:t.accountId||allAccounts[0]?.id||1,
       tags:t.tags||[], schedule:t.schedule||'',
-      memo:'再仕訳調整（差額）'
+      memo:'差額調整'
     });
   }
   closeRejournal();
   await refreshAccounts();loadRecent();
-  alert('再仕訳が完了しました');
+  alert('振り分けを変更しました');
 }
 
 // ─── Init ───

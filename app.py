@@ -208,7 +208,7 @@ def update_account(acc_id):
                 "category": "雑収入" if tx_type == "income" else "雑費",
                 "tags": [],
                 "schedule": "",
-                "memo": f"残高調整: {acc['name']}: {old_balance} → {new_balance}",
+                "memo": f"残高修正: {acc['name']}: {old_balance} → {new_balance}",
                 "accountId": acc_id,
             }
             # 残高は仕訳で自動調整されるので直接セット
@@ -277,7 +277,7 @@ def add_transaction():
     if tx_type == "transfer":
         tx["fromAccountId"] = int(body["fromAccountId"])
         tx["toAccountId"] = int(body["toAccountId"])
-        tx["category"] = "振替"
+        tx["category"] = "口座間移動"
 
         from_acc = get_account(data, tx["fromAccountId"])
         to_acc = get_account(data, tx["toAccountId"])
@@ -890,7 +890,7 @@ def get_pl():
     if cc_unsorted > 0:
         expenses_by_cat["雑費"] = expenses_by_cat.get("雑費", 0) + cc_unsorted
         expense_detail.setdefault("雑費", {}).setdefault("(タグなし)", {})
-        expense_detail["雑費"]["(タグなし)"]["CC未仕訳"] = expense_detail["雑費"]["(タグなし)"].get("CC未仕訳", 0) + cc_unsorted
+        expense_detail["雑費"]["(タグなし)"]["クレカ未分類"] = expense_detail["雑費"]["(タグなし)"].get("クレカ未分類", 0) + cc_unsorted
 
     total_income = sum(income_by_cat.values())
     total_expenses = sum(expenses_by_cat.values())
